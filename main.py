@@ -1,16 +1,41 @@
-# This is a sample Python script.
-
-# Press Mayús+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from frozenLake import FrozenLake
+import control
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
+    seed = 0
 
+    if big_lake:
+        lake = [['&', '.', '.', '.', '.', '.', '.', '.'],
+                ['.', '.', '.', '.', '.', '.', '.', '.'],
+                ['.', '.', '.', '#', '.', '.', '.', '.'],
+                ['.', '.', '.', '.', '.', '#', '.', '.'],
+                ['.', '.', '.', '#', '.', '.', '.', '.'],
+                ['.', '#', '#', '.', '.', '.', '#', '.'],
+                ['.', '#', '.', '.', '#', '.', '#', '.'],
+                ['.', '.', '.', '#', '.', '.', '.', '$']]
+    else:
+        # Small lake
+        lake = [['&', '.', '.', '.'],
+                ['.', '#', '.', '#'],
+                ['.', '.', '.', '#'],
+                ['#', '.', '.', '$']]
 
-# Press the green button in the gutter to run the script.
+    env = FrozenLake(lake, slip=0.1, max_steps=16, seed=seed)
+
+    if algorithm == 'policy_iteration':
+        print('## Policy iteration')
+        model = control.DynamicProgramming(env)
+        policy, value = model.policy_iteration(gamma, theta=0.001, max_iterations=128)
+        env.render(policy, value)
+    elif algorithm == 'value_iteration':
+        print('## Value iteration')
+        model = control.DynamicProgramming(env)
+        policy, value = model.value_iteration(gamma, theta=0.001, max_iterations=128)
+        env.render(policy, value)
+    else:
+        print('Work In Progress')
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    find_policy()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
