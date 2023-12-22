@@ -170,32 +170,35 @@ class SARSA:
     This class implements the SARSA (state-action-reward-state-action) algorithm based
     on Temporal Difference Learning.
     """
-    def __init__(self, env:frozenLake.FrozenLake, max_iterations, learning_rate=0.1, epsilon=0.01, discount_rate=0.9):
+    def __init__(self, env:frozenLake.FrozenLake, max_iterations, learning_rate=0.1, epsilon=0.01, discount_rate=0.9, tabular=True):
         self.env = env
         self.N = max_iterations
         self.alpha = learning_rate
-        self.epsilon = epsilon
+        self.epsilon = np.linspace(epsilon, 0, max_iterations)
         self.gamma = discount_rate
-        self.state_init = env.lake[0][0]
+        self.state_init = env.reset()
         self.policy = [0]*env.n_states
+        self.value = [0]*self.env.n_states
         # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
         Q = [[0]*self.env.n_actions]*self.env.n_states
 
-        for _ in self.N:
+        for i in self.N:
             state = self.state_init
             # selection an action based on epsilon greedy policy
             e = np.random.random()
-            if e<self.epsilon:
+            if e<self.epsilon[i]:
                 action = np.random.choice(range(self.env.n_actions))
             else:
                 action = np.argmax(Q[state])
+            done = False
 
-            while state != self.env.absorbing_state:
+            while not done:
                 new_state, reward, done = self.env.step(action)
+                # Select a_prime using epsilon greedy approach
                 e = np.random.random()
-                if e < self.epsilon:
+                if e < self.epsilon[i]:
                     new_action = np.random.choice(range(self.env.n_actions))
                 else:
                     new_action = np.argmax(Q[state])
@@ -205,8 +208,8 @@ class SARSA:
                                                 Q[state][action])
                 state, action = new_state, new_action
 
-        for s in self.env.n_states:
-            self.policy[s] = np.argmax(Q[s])
+        self.policy[s] = np.argmax(Q[s], axis=1)
+        self.value[s] = np.max(Q[s], axis=1)
 
 
 class Q:
