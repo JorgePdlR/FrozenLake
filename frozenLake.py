@@ -90,7 +90,9 @@ class FrozenLake(Environment):
 
         self.absorbing_state = n_states - 1
 
-        # TODO:
+        # p can be pre-computed. We decided calculate p with p()
+        # function instead of pre-computing it and just retrieving
+        # its value.
 
         Environment.__init__(self, n_states, n_actions, max_steps, pi, seed=seed)
 
@@ -107,103 +109,107 @@ class FrozenLake(Environment):
         # Probability of transitioning from state to next_state given an action
         # (return value)
         pt = 0.0
+        # Is the agent in a hole ?
+        hole = 0
+        # Is the agent in the goal ?
+        goal = 0
+
+        # Compute if agent is in a hole or the goal. If current state is
+        # the absorbing state then we are not in a hole or the goal
+        if state != self.absorbing_state:
+            hole = True if self.lake_flat[state] == '#' else False
+            goal = True if self.lake_flat[state] == '$' else False
 
         # 1. If the agent is in the absorbing state the probability of remaining in
         #    the same place is 1. Any action taken in the absorbing state leads
         #    to the absorbing state. Validating this first to avoid dealing with
         #    'out of index' issues with the self.lake_flat array since the
-        #    absorbing state is in the self.lake.size + 1 position
-        if state == self.absorbing_state and next_state == self.absorbing_state:
-            # Assigning return value to pt just to keep the convention that pt
-            # is the return value. Same convention is used in the rest of the
-            # function.
-            pt = 1.0
-            return pt
-        elif state == self.absorbing_state:
-            return pt
-
-        # Is the agent in a hole or the goal ?
-        hole_or_goal = True if self.lake_flat[state] == '#' or self.lake_flat[state] == '$' else False
-
+        #    absorbing state is in the self.lake.size + 1 position.
+        #    The probability of moving from the absorbing state to any other state
+        #    is 0, pt is initialized in 0.0 it is not necessary to make the
+        #    assignment.
+        if state == self.absorbing_state:
+            if next_state == self.absorbing_state:
+                pt = 1.0
         # 2. If the agent is in a hole or in the goal the probability of moving to
-        #    the absorbing state is 1.
-        if hole_or_goal and next_state == self.absorbing_state:
-            pt = 1.0
-            return pt
-        # If the agent is in any position different from a hole or the goal, and it
-        # wants to move to the absorbing state the probability is 0, or if it is
-        # in a hole or the goal, and it tries to move to any other state different
-        # from the absorbing state the probability is 0.
-        elif next_state == self.absorbing_state or hole_or_goal:
-            return pt
-
+        #    the absorbing state is 1. If the agent is in any position different
+        #    from a hole or the goal, and it wants to move to the absorbing state
+        #    the probability is 0
+        elif next_state == self.absorbing_state or hole or goal:
+            if next_state == self.absorbing_state and (hole or goal):
+                pt = 1.0
         # 3. Validate if the agent can move from the current state to the next_state.
         #    Consider that it has 4 possible actions: up, down, left, right;
         #    this means that it can move in just 1 direction per action, either
         #    x or y. The absolute change in the coordinates x, y from state to
-        #    next_state can't be grater than 1
+        #    next_state can't be greater than 1. A diagonal move is invalid since
+        #    x = 1 and y = 1 will add up to 2
+        else:
+            # Get x, y coordinates of state and next_state
+            next_state_y, next_state_x = np.unravel_index(next_state, self.lake.shape)
+            state_y, state_x = np.unravel_index(state, self.lake.shape)
+            # A negative delta_x indicates that the agent should move to the left,
+            # positive delta_x indicates it should move to the right
+            delta_x = next_state_x - state_x
+            # A negative delta_y indicates that the agent should go down, positive
+            # delta_y indicate it should go up
+            delta_y = next_state_y - state_y
 
-        # Get x, y coordinates of state and next_state
-        next_state_y, next_state_x = np.unravel_index(next_state, self.lake.shape)
-        state_y, state_x = np.unravel_index(state, self.lake.shape)
-        # A negative delta_x indicates that the agent should move to the left,
-        # positive delta_x indicates it should move to the right
-        delta_x = next_state_x - state_x
-        # A negative delta_y indicates that the agent should go down, positive
-        # delta_y indicate it should go up
-        delta_y = next_state_y - state_y
+            # If the movement is valid then compute the probability of making the
+            # move given the current state, next_state and action. Probability of
+            # making an invalid move is 0,
+            if (np.abs(delta_x) + np.abs(delta_y)) <= 1:
+                # 4. Given that the transition from state to next_state is valid,
+                #    validate that by executing the action the agent can get from
+                #    state to next_state either by the selected action or by
+                #    slipping.
 
-        # Probability of making an invalid move is 0
-        if (np.abs(delta_x) + np.abs(delta_y)) > 1 and not hole_or_goal:
-            return pt
+                # Borders of the lake
+                border_y, border_x = self.lake.shape
+                border_x -= 1
+                border_y -= 1
 
-        # 4. Given that the transition from state to next_state is valid, validate
-        #    that by executing the action the agent can get from state to
-        #    next_state either by the selected action or by slipping.
+                # Defining walls as the number of borders each tile collides with.
+                # Get walls in x and y
+                walls_y = 1 if state_y == border_y or state_y == 0 else 0
+                walls_x = 1 if state_x == border_x or state_x == 0 else 0
+                # Add the number of walls this state collides with x and y
+                walls = walls_y + walls_x
 
-        # Borders of the lake
-        border_y, border_x = self.lake.shape
-        border_x -= 1
-        border_y -= 1
+                # Transition is from state to next_state, where state is not equal to
+                # next_state. In other words, the agent is trying to move from the
+                # current state
+                if delta_x or delta_y:
+                    # For transitioning from state to the next_state the action provided
+                    # is the correct one. The agent will get to the next state unless it slips
+                    if ((delta_x > 0 and action == right) or (delta_x < 0 and action == left) or
+                            (delta_y > 0 and action == down) or (delta_y < 0 and action == up)):
+                        pt = (1 - self.slip) + (self.slip / self.n_actions)
+                    # For transitioning from state to the next_state the action provided
+                    # is incorrect. The only wat to transition is by slipping.
+                    else:
+                        pt = (self.slip / self.n_actions)
+                # Transition is to the same state: state == next_state. The agent can remain in
+                # the same state if it crashes with a wall. The number of walls contribute
+                # to how probable is to remain in the same state.
+                elif walls:
+                    # Convert possible values to border places for clarity of reading the code:
+                    left_border, right_border, top_border, down_border = [0, border_x, 0, border_y]
 
-        # Defining walls as the number of borders each tile collides with.
-        # Get walls in x and y
-        walls_y = 1 if state_y == border_y or state_y == 0 else 0
-        walls_x = 1 if state_x == border_x or state_x == 0 else 0
-        # Add the number of walls this state collides with x and y
-        walls = walls_y + walls_x
-
-        # Transition is from state to next_state, where state is not equal to
-        # next_state. In other words, the agent is trying to move from the
-        # current state
-        if delta_x or delta_y:
-            # For transitioning from state to the next_state the action provided
-            # is the correct one. The agent will get to the next state unless it slips
-            if ((delta_x > 0 and action == right) or (delta_x < 0 and action == left) or
-                    (delta_y > 0 and action == down) or (delta_y < 0 and action == up)):
-                pt = (1 - self.slip) + (self.slip / self.n_actions)
-            # For transitioning from state to the next_state the action provided
-            # is incorrect. The only wat to transition is by slipping.
-            else:
-                pt = (self.slip / self.n_actions)
-        # Transition is to the same state: state == next_state. The agent can remain in
-        # the same state if it crashes with a wall. The number of walls contribute
-        # to how probable is to remain in the same state.
-        elif walls:
-            # The agent is moving to a wall, it will remain in the same state unless is
-            # slips to a place without a wall.
-            if (action == left and state_x == 0) or (action == right and state_x == border_x) or \
-                    (action == up and state_y == 0) or (action == down and state_y == border_y):
-                pt = (1 - self.slip) + ((self.slip / self.n_actions) * walls)
-            # Action is not in a direction of a wall, the agent will remain in the same
-            # state just if it slips into a wall
-            else:
-                pt = (self.slip / self.n_actions) * walls
-        # Is not necessary to put an else case here, since pt was initialized to 0.0
-        # If pt has a value of 0.0 at this point means that the agent wanted to remain
-        # in the same state but there are no walls to crash to remain in the same place.
-        # So the probability of remaining in the same place is 0 given any action,
-        # even if the agent slips it will end up moving.
+                    # The agent is moving to a wall, it will remain in the same state unless is
+                    # slips to a place without a wall.
+                    if (action == left and state_x == left_border) or (action == right and state_x == right_border) or \
+                            (action == up and state_y == top_border) or (action == down and state_y == down_border):
+                        pt = (1 - self.slip) + ((self.slip / self.n_actions) * walls)
+                    # Action is not in a direction of a wall, the agent will remain in the same
+                    # state just if it slips into a wall
+                    else:
+                        pt = (self.slip / self.n_actions) * walls
+                # Is not necessary to put an else case here, since pt was initialized to 0.0
+                # If pt has a value of 0.0 at this point means that the agent wanted to remain
+                # in the same state but there are no walls to crash to remain in the same place.
+                # So the probability of remaining in the same place is 0 given any action,
+                # even if the agent slips it will end up moving.
 
         # Return the probability of moving from state to next_state given an action and
         # the probability of slipping

@@ -1,9 +1,15 @@
 import numpy as np
-
 import frozenLake
 
 
-class DynamicProgramming:
+class TabularModelBased:
+    """
+    This class implements Tabular model-based algorithms:
+        - Policy evaluation
+        - Policy improvement
+        - Policy iteration
+        - Value iteration
+    """
     def __init__(self, env):
         self.env = env
 
@@ -98,6 +104,8 @@ class DynamicProgramming:
             policy = np.zeros(self.env.n_states, dtype=int)
         else:
             policy = np.array(policy, dtype=int)
+
+        value = np.zeros(self.env.n_states, dtype=np.float32)
 
         # Iterate the maximum number of iterations or while there are still
         # improvements in the policy
