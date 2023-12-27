@@ -235,7 +235,7 @@ class Q_Learning:
         # up, left, down, right = [0, 1, 2, 3]
         # Expected policy [2 1 2 1 2 0 2 0 3 2 2 0 0 3 3 0 0]
 
-    def make_policy(self, seed=101):
+    def make_policy(self, seed=100):
 
         # Initiate the q values
         q = np.zeros((self.env.n_states, self.env.n_actions))

@@ -39,7 +39,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
         env.render(policy, value)
 
     elif algorithm == 'Q_Learning':
-        policy, value = control.Q_Learning(env, 4000).make_policy()
+        policy, value = control.Q_Learning(env, 4001).make_policy()
         env.render(policy, value)
 
     elif algorithm == 'deep_Q_network':
