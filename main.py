@@ -37,6 +37,11 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
         model = control.TabularModelBased(env)
         policy, value = model.value_iteration(gamma, theta=0.001, max_iterations=128)
         env.render(policy, value)
+
+    elif algorithm == 'Q_Learning':
+        policy, value = control.Q_Learning(env, 4000).make_policy()
+        env.render(policy, value)
+
     elif algorithm == 'deep_Q_network':
         # Recreate frozen lake to update max_steps in case of the big lake
         env = FrozenLake(lake, slip=0.1, max_steps=np.array(lake).size, seed=seed)
@@ -58,7 +63,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
 if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
-    algorithm = 'value_iteration'
+    algorithm = 'Q_Learning'
 
     if len(sys.argv) == 4:
         big_lake = bool(sys.argv[1])
