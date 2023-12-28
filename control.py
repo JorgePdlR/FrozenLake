@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 
 import frozenLake
@@ -176,13 +178,12 @@ class TabularModelBased:
 
 
 class LinearWrapper:
-    def __init__(self, env):
+    def __init__(self, env:frozenLake.FrozenLake):
         self.env = env
+        self.lake_flat = self.env.lake_flat
         self.n_actions = self.env.n_actions
         self.n_states = self.env.n_states
         self.n_features = self.n_actions * self.n_states
-        self.policy = [0] * self.env.n_states
-        self.value = [0] * self.env.n_states
 
     def encode_state(self, s):
         features = np.zeros((self.n_actions, self.n_features))
@@ -224,6 +225,7 @@ class SARSA:
     """
     def __init__(self, env:frozenLake.FrozenLake|LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5, discount_rate=0.9,
                  seed=100):
+        print('Flat Labrynth:', env.lake_flat)  # start (&), frozen (.), hole (#), goal ($)
         self.env = env
         self.N = max_iterations
         self.alpha = np.linspace(learning_rate, 0, max_iterations)
@@ -232,7 +234,6 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
-        print('Flat Labrynth:',self.env.lake_flat) # start (&), frozen (.), hole (#), goal ($)
         # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
@@ -241,7 +242,6 @@ class SARSA:
         for i in range(self.N):
             print('\nEpisode:',i+1)
             state = self.env.reset()
-            # state = self.env.state = 14 # remove later
 
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
@@ -278,15 +278,58 @@ class SARSA:
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
 
-    def make_linear_policy(self):
-        theta = np.zeros(self.env.n_features)
-
+    def make_linear_approx_policy(self):
+        Q = np.zeros((self.env.n_states, self.env.n_actions))
+        # weights = self.random_state.random(self.env.n_features)/100
+        weights = np.zeros(self.env.n_features)
         for i in range(self.N):
-            features = self.env.reset()
+            print('\nEpisode:',i+1)
+            done = False
+            state = self.env.env.reset()
 
-            q = features.dot(theta)
+            # selecting an action based on epsilon greedy policy
+            e = self.random_state.random()
+            print('\te:',e,'\tepsilon:',self.epsilon[i])
+            if e < self.epsilon[i]:
+                action = self.random_state.choice(self.env.n_actions)
+            else:
+                action = np.argmax(Q[state])
 
-            # TODO:
-        self.policy, self.value = self.env.decode_policy(theta)
+            features = self.env.encode_state(state)
+            print('features:', features.shape)
+            for a in range(self.env.n_actions):
+                q_pred = np.dot(weights, features[state, a])
+                print('q_pred shape', q_pred.shape)
+                print(q_pred)
+            # sys.exit()
+
+            while not done:
+                print('\t\tSteps taken:',self.env.env.n_steps)
+                new_state, reward, done = self.env.step(action)
+                features = new_state
+                q_pred = features.dot(weights)
+                e = self.random_state.random()
+                print('\t\te:',e,'\tepsilon:',self.epsilon[i])
+                if e < self.epsilon[i]:
+                    new_action = self.random_state.choice(self.env.n_actions)
+                    print('\t\tRandom new action chosen',new_action)
+                else:
+                    new_action = np.argmax(q_pred)
+                    print('\t\tBest new action chosen',new_action)
+
+                # print('\t\tState:', np.argmax(state[action]), '\tAction:', action, '\tReward:', reward,
+                #       '\tNew state:', np.argmax(np.argmax(new_state[new_action])),
+                #       '\tNew action:', new_action)
+
+                print('\t\tTemporal Difference')
+                delta = reward - q_pred[action] + self.gamma*q_pred[new_action]
+                weights += self.alpha[i]*delta
+
+                state, action = new_state, new_action
+                print('\tDone?', done)
+
+
+
+        self.policy, self.value = self.env.decode_policy(weights)
 
 

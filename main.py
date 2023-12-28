@@ -5,7 +5,8 @@ import sys
 import numpy as np
 
 
-def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration', linear_approx=False):
+def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
+                linear_approx=False):
     seed = 0
     max_episodes = 4000
 
@@ -48,7 +49,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration', linear_a
             env = control.LinearWrapper(env)
             model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                                   max_iterations=max_episodes, seed=seed)
-            model.make_linear_policy()
+            model.make_linear_approx_policy()
 
         else:
             model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
@@ -87,5 +88,5 @@ if __name__ == '__main__':
     else:
         print('Parameters not provided, using default\n')
 
-    find_policy(big_lake, gamma, algorithm, linear_approx=False)
+    find_policy(big_lake, gamma, algorithm, linear_approx=True)
 
