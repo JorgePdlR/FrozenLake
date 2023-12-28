@@ -10,6 +10,7 @@ class TabularModelBased:
         - Policy iteration
         - Value iteration
     """
+
     def __init__(self, env):
         self.env = env
 
@@ -173,30 +174,33 @@ class TabularModelBased:
         # Return optimal policy and value
         return policy, value
 
+
 class SARSA:
     """
     This class implements the SARSA (state-action-reward-state-action) algorithm based
     on Temporal Difference Learning.
     """
-    def __init__(self, env:frozenLake.FrozenLake, max_iterations, learning_rate=0.1, epsilon=0.01, discount_rate=0.9, tabular=True):
+
+    def __init__(self, env: frozenLake.FrozenLake, max_iterations, learning_rate=0.1, epsilon=0.01, discount_rate=0.9,
+                 tabular=True):
         self.env = env
         self.N = max_iterations
         self.alpha = learning_rate
         self.epsilon = np.linspace(epsilon, 0, max_iterations)
         self.gamma = discount_rate
         self.state_init = env.reset()
-        self.policy = [0]*env.n_states
-        self.value = [0]*self.env.n_states
+        self.policy = [0] * env.n_states
+        self.value = [0] * self.env.n_states
         # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
-        Q = [[0]*self.env.n_actions]*self.env.n_states
+        Q = [[0] * self.env.n_actions] * self.env.n_states
 
         for i in self.N:
             state = self.state_init
             # selection an action based on epsilon greedy policy
             e = np.random.random()
-            if e<self.epsilon[i]:
+            if e < self.epsilon[i]:
                 action = np.random.choice(range(self.env.n_actions))
             else:
                 action = np.argmax(Q[state])
@@ -211,9 +215,9 @@ class SARSA:
                 else:
                     new_action = np.argmax(Q[state])
                 # temporal difference learning
-                Q[state][action] += self.alpha*(reward +
-                                                self.gamma*Q[new_state][new_action] -
-                                                Q[state][action])
+                Q[state][action] += self.alpha * (reward +
+                                                  self.gamma * Q[new_state][new_action] -
+                                                  Q[state][action])
                 state, action = new_state, new_action
 
         self.policy[s] = np.argmax(Q[s], axis=1)
@@ -266,53 +270,16 @@ class Q_Learning:
         return self.policy, self.value
 
 
-class LinearWrapper:
-    def __init__(self, env):
-        self.env = env
-        self.n_actions = env.n_actions
-        self.n_states = env.n_states
-        self.n_features = self.n_actions * self.n_states
 
-    def encode_state(self, s):
-        features = np.zeros((self.n_actions, self.n_features))
-        print(s)
-        for a in range(self.n_actions):
-            i = np.ravel_multi_index((s, a), (self.n_states, self.n_actions))
-            features[a, i] = 1.0
-
-        print(features)
-        return features
-
-    def decode_policy(self, theta):
-        policy = np.zeros(self.env.n_states, dtype=int)
-        value = np.zeros(self.env.n_states)
-        for s in range(self.n_states):
-            features = self.encode_state(s)
-            q = features.dot(theta)
-            policy[s] = np.argmax(q)
-            value[s] = np.max(q)
-        return policy, value
-
-    def reset(self):
-        return self.encode_state(self.env.reset())
-
-    def step(self, action):
-        state, reward, done = self.env.step(action)
-        return self.encode_state(state), reward, done
-
-    def render(self, policy=None, value=None):
-        self.env.render(policy, value)
 
 
 class Linear_Q_Learning:
-    def __init__(self, env: frozenLake.FrozenLake, max_iterations, learning_rate=0.5, epsilon=0.5, discount_rate=0.9):
-        self.env = env
-        self.linear_env = LinearWrapper(env)
+    def __init__(self, env, max_iterations, learning_rate=0.01, epsilon=0.5, discount_rate=0.9):
+        self.linear_env = env
         self.N = max_iterations
         self.alpha = learning_rate
         self.epsilon = epsilon
         self.gamma = discount_rate
-        self.state_init = env.lake[0][0]
         self.policy = [0] * env.n_states
         self.value = [0] * env.n_states
         # up, left, down, right = [0, 1, 2, 3]
@@ -320,22 +287,24 @@ class Linear_Q_Learning:
 
     def make_policy(self, seed=101):
 
-        theta = np.zeros(self.linear_env.n_features)
+        # Initiate theta and q
+        theta = np.zeros((self.linear_env.n_features, self.linear_env.n_actions))
         q = np.zeros(self.linear_env.n_actions)
 
         # For all the iterations
         for i in range(self.N):
 
-            s = self.state_init
+            # Initial state and feature
+            s = 0
             f = self.linear_env.reset()
 
-            for a in range(self.env.n_actions):
-                q[a] = np.dot(theta,f[a])
+            for a in range(self.linear_env.n_actions):
+                q[a] = np.sum(theta * f[s,a])
 
             # features = self.linear_env.encode_state(s)
             # q = np.dot(features, theta).flatten()
 
-            while s != self.env.absorbing_state:
+            while s != (self.linear_env.n_states-1):
 
                 e = np.random.random()
                 if e < self.epsilon:
@@ -344,17 +313,26 @@ class Linear_Q_Learning:
                     a = np.argmax(q)
 
                 features_prime, r, done = self.linear_env.step(a)
+
+                indices = np.argmax(features_prime, axis=1)
+                states = [np.unravel_index(index, (self.linear_env.n_states, self.linear_env.n_actions))[0] for index in
+                          indices]
+                s_prime = states[0]
+
                 delta = r - q[a]
 
-                for a_prime in range(self.env.n_actions):
-                    q[a_prime] = np.dot(theta, f[a_prime])
+                for a_prime in range(self.linear_env.n_actions):
+                    q[a_prime] = np.sum(theta * features_prime[a_prime,s_prime])
 
-                #q_prime = np.dot(features_prime, theta)
+                # q_prime = np.dot(features_prime, theta)
                 delta = delta + self.gamma * np.max(q)
-                print(f.shape)
-                print(delta)
-                theta += self.alpha * (f * delta)
-                s = f
+                theta += (self.alpha * delta) * f.T
+
+                p, v = self.linear_env.decode_policy(theta)
+                print('q: ',theta.shape)
+
+                s = s_prime
 
         self.policy, self.value = self.linear_env.decode_policy(theta)
-        self.linear_env.render(self.policy, self.value)
+        return self.policy, self.value
+

@@ -1,11 +1,12 @@
 from frozenLake import FrozenLake
 import control
+import LinearWrapper
 import deepQnetwork as deepQ
 import sys
 import numpy as np
 
 
-def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
+def find_policy(big_lake=True, gamma=0.9, algorithm='value_iteration'):
     seed = 0
     max_episodes = 4000
 
@@ -39,8 +40,13 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
         env.render(policy, value)
 
     elif algorithm == 'Q_Learning':
-        policy, value = control.Q_Learning(env, 4001).make_policy()
+        policy, value = control.Q_Learning(env, 10000).make_policy()
         env.render(policy, value)
+
+    elif algorithm == 'Linear_Q_Learning':
+        linear_env = LinearWrapper.LinearWrapper(env)
+        policy, value = control.Linear_Q_Learning(linear_env, 4000).make_policy()
+        linear_env.render(policy, value)
 
     elif algorithm == 'deep_Q_network':
         # Recreate frozen lake to update max_steps in case of the big lake
@@ -61,7 +67,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
 
 
 if __name__ == '__main__':
-    big_lake = False
+    big_lake = True
     gamma = 0.9
     algorithm = 'Q_Learning'
 
