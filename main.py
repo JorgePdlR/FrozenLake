@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 
-def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
+def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration', linear_approx=False):
     seed = 0
     max_episodes = 4000
 
@@ -25,7 +25,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
                 ['.', '.', '.', '#'],
                 ['#', '.', '.', '$']]
 
-    env = FrozenLake(lake, slip=0.1, max_steps=20, seed=seed)
+    env = FrozenLake(lake, slip=0.1, max_steps=128, seed=seed)
 
     if algorithm == 'policy_iteration':
         print('*'*10,'Policy iteration','*'*10)
@@ -39,8 +39,21 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
         env.render(policy, value)
     elif algorithm == 'sarsa':
         print('*'*10,'SARSA CONTROL','*'*10)
-        model = control.SARSA(env, learning_rate=0.001, discount_rate=gamma, epsilon=0.2, max_iterations=128)
-        model.make_policy()
+        if big_lake:
+            max_episodes = 40000
+        else:
+            max_episodes = 4000
+
+        if linear_approx:
+            env = control.LinearWrapper(env)
+            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
+                                  max_iterations=max_episodes, seed=seed)
+            model.make_linear_policy()
+
+        else:
+            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
+                                  max_iterations=max_episodes, seed=seed)
+            model.make_policy()
         print('Policy:',model.policy)
         print('Value:',model.value)
         env.render(model.policy, model.value)
@@ -74,5 +87,5 @@ if __name__ == '__main__':
     else:
         print('Parameters not provided, using default\n')
 
-    find_policy(big_lake, gamma, algorithm)
+    find_policy(big_lake, gamma, algorithm, linear_approx=False)
 

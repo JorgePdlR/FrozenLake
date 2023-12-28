@@ -1,4 +1,5 @@
 import numpy as np
+
 import frozenLake
 
 
@@ -173,35 +174,79 @@ class TabularModelBased:
         # Return optimal policy and value
         return policy, value
 
+
+class LinearWrapper:
+    def __init__(self, env):
+        self.env = env
+        self.n_actions = self.env.n_actions
+        self.n_states = self.env.n_states
+        self.n_features = self.n_actions * self.n_states
+        self.policy = [0] * self.env.n_states
+        self.value = [0] * self.env.n_states
+
+    def encode_state(self, s):
+        features = np.zeros((self.n_actions, self.n_features))
+        for a in range(self.n_actions):
+            i = np.ravel_multi_index((s, a), (self.n_states, self.n_actions))
+            features[a, i] = 1.0
+
+        return features
+
+    def decode_policy(self, theta):
+        policy = np.zeros(self.env.n_states, dtype=int)
+        value = np.zeros(self.env.n_states)
+
+        for s in range(self.n_states):
+            features = self.encode_state(s)
+            q = features.dot(theta)
+
+            policy[s] = np.argmax(q)
+            value[s] = np.max(q)
+
+        return policy, value
+
+    def reset(self):
+        return self.encode_state(self.env.reset())
+
+    def step(self, action):
+        state, reward, done = self.env.step(action)
+
+        return self.encode_state(state), reward, done
+
+    def render(self, policy=None, value=None):
+        self.env.render(policy, value)
+
+
 class SARSA:
     """
     This class implements the SARSA (state-action-reward-state-action) algorithm based
     on Temporal Difference Learning.
     """
-    def __init__(self, env:frozenLake.FrozenLake, max_iterations, learning_rate=0.1, epsilon=0.01, discount_rate=0.9, tabular=True):
+    def __init__(self, env:frozenLake.FrozenLake|LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5, discount_rate=0.9,
+                 seed=100):
         self.env = env
         self.N = max_iterations
-        self.alpha = learning_rate
+        self.alpha = np.linspace(learning_rate, 0, max_iterations)
         self.epsilon = np.linspace(epsilon, 0, max_iterations)
         self.gamma = discount_rate
-        self.policy = [0]*env.n_states
+        self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
+        self.random_state = np.random.RandomState(seed)
         print('Flat Labrynth:',self.env.lake_flat) # start (&), frozen (.), hole (#), goal ($)
         # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
-        Q = [[0]*self.env.n_actions]*self.env.n_states
+        Q = np.zeros((self.env.n_states,self.env.n_actions))
 
         for i in range(self.N):
             print('\nEpisode:',i+1)
             state = self.env.reset()
-            state = self.env.state = 14 # remove later
+            # state = self.env.state = 14 # remove later
 
             # selecting an action based on epsilon greedy policy
-            e = np.random.random()
-
+            e = self.random_state.random()
             if e<self.epsilon[i]:
-                action = np.random.choice(range(self.env.n_actions))
+                action = self.random_state.choice(self.env.n_actions)
             else:
                 action = np.argmax(Q[state])
             done = False
@@ -211,21 +256,21 @@ class SARSA:
                 new_state, reward, done = self.env.step(action)
 
                 # Select a_prime using epsilon greedy approach
-                e = np.random.random()
+                e = self.random_state.random()
                 print('\t\te:',e,'\tepsilon:',self.epsilon[i])
 
                 # choosing the next action
                 if e < self.epsilon[i]:
-                    new_action = np.random.choice(range(self.env.n_actions))
+                    new_action = self.random_state.choice(self.env.n_actions)
                     print('\t\tRandom new action chosen')
                 else:
-                    new_action = np.argmax(Q[state])
+                    new_action = np.argmax(Q[new_state])
                     print('\t\tBEST new action chosen')
                 print('\t\tState:', state, '\tAction:',action, '\tReward:',reward,'\tNew state:',new_state, '\tNew action:',new_action)
                 # temporal difference learning
                 temporal_diff = reward + self.gamma*Q[new_state][new_action] - Q[state][action]
                 print('\t\tTemporal Difference:',temporal_diff)
-                Q[state][action] += self.alpha*temporal_diff
+                Q[state][action] += self.alpha[i]*temporal_diff
 
                 state, action = new_state, new_action
                 print('\tDone?', done)
@@ -233,7 +278,15 @@ class SARSA:
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
 
+    def make_linear_policy(self):
+        theta = np.zeros(self.env.n_features)
 
-class Q:
-    def __init__(self):
-        pass
+        for i in range(self.N):
+            features = self.env.reset()
+
+            q = features.dot(theta)
+
+            # TODO:
+        self.policy, self.value = self.env.decode_policy(theta)
+
+
