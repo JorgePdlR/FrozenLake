@@ -195,7 +195,8 @@ class SARSA:
         for i in range(self.N):
             print('\nEpisode:',i+1)
             state = self.env.reset()
-            state = 14
+            state = self.env.state = 14 # remove later
+
             # selecting an action based on epsilon greedy policy
             e = np.random.random()
 
