@@ -195,7 +195,8 @@ class SARSA:
         for i in range(self.N):
             print('\nEpisode:',i+1)
             state = self.env.reset()
-            # selection an action based on epsilon greedy policy
+            state = 14
+            # selecting an action based on epsilon greedy policy
             e = np.random.random()
 
             if e<self.epsilon[i]:
@@ -205,10 +206,9 @@ class SARSA:
             done = False
 
             while not done:
-                print('\tSteps taken:',self.env.n_steps)
-                print('\tState:', state)
+                print('\t\tSteps taken:',self.env.n_steps)
                 new_state, reward, done = self.env.step(action)
-                print('\tDone?', done)
+
                 # Select a_prime using epsilon greedy approach
                 e = np.random.random()
                 print('\t\te:',e,'\tepsilon:',self.epsilon[i])
@@ -216,16 +216,18 @@ class SARSA:
                 # choosing the next action
                 if e < self.epsilon[i]:
                     new_action = np.random.choice(range(self.env.n_actions))
-                    print('\t\tRandom action:', new_action)
+                    print('\t\tRandom new action chosen')
                 else:
                     new_action = np.argmax(Q[state])
-                    print('\t\tBEST action:', new_action)
+                    print('\t\tBEST new action chosen')
+                print('\t\tState:', state, '\tAction:',action, '\tReward:',reward,'\tNew state:',new_state, '\tNew action:',new_action)
                 # temporal difference learning
                 temporal_diff = reward + self.gamma*Q[new_state][new_action] - Q[state][action]
                 print('\t\tTemporal Difference:',temporal_diff)
                 Q[state][action] += self.alpha*temporal_diff
 
                 state, action = new_state, new_action
+                print('\tDone?', done)
 
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)

@@ -211,8 +211,8 @@ class FrozenLake(Environment):
                 # So the probability of remaining in the same place is 0 given any action,
                 # even if the agent slips it will end up moving.
 
-        # Return the probability of moving from state to next_state given an action and
-        # the probability of slipping
+        # Return the probability of moving from state to next_state given an action while
+        # considering the probability of slipping
         return pt
 
     def r(self, next_state, state, action):
