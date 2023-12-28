@@ -25,24 +25,31 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
                 ['.', '.', '.', '#'],
                 ['#', '.', '.', '$']]
 
-    env = FrozenLake(lake, slip=0.1, max_steps=16, seed=seed)
+    env = FrozenLake(lake, slip=0.1, max_steps=20, seed=seed)
 
     if algorithm == 'policy_iteration':
-        print('## Policy iteration')
+        print('*'*10,'Policy iteration','*'*10)
         model = control.TabularModelBased(env)
         policy, value = model.policy_iteration(gamma, theta=0.001, max_iterations=128)
         env.render(policy, value)
     elif algorithm == 'value_iteration':
-        print('## Value iteration')
+        print('*'*10,'Value iteration','*'*10)
         model = control.TabularModelBased(env)
         policy, value = model.value_iteration(gamma, theta=0.001, max_iterations=128)
         env.render(policy, value)
+    elif algorithm == 'sarsa':
+        print('*'*10,'SARSA CONTROL','*'*10)
+        model = control.SARSA(env, learning_rate=0.001, discount_rate=gamma, epsilon=0.2, max_iterations=128)
+        model.make_policy()
+        print('Policy:',model.policy)
+        print('Value:',model.value)
+        env.render(model.policy, model.value)
     elif algorithm == 'deep_Q_network':
         # Recreate frozen lake to update max_steps in case of the big lake
         env = FrozenLake(lake, slip=0.1, max_steps=np.array(lake).size, seed=seed)
 
         image_env = deepQ.FrozenLakeImageWrapper(env)
-        print('## Deep Q-network learning')
+        print('*'*10,'Deep Q-network learning','*'*10)
 
         dqn = deepQ.deep_q_network_learning(image_env, max_episodes, learning_rate=0.001,
                                             gamma=gamma, epsilon=0.2, batch_size=32,
@@ -52,20 +59,20 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration'):
         policy, value = image_env.decode_policy(dqn)
         image_env.render(policy, value)
     else:
-        print('Work In Progress')
+        print('*'*10,'Work In Progress','*'*10)
 
 
 if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
-    algorithm = 'value_iteration'
+    algorithm = 'sarsa'
 
     if len(sys.argv) == 4:
         big_lake = bool(sys.argv[1])
         gamma = float(sys.argv[2])
         algorithm = str(sys.argv[3])
     else:
-        print('Parameters not provided, using default')
+        print('Parameters not provided, using default\n')
 
     find_policy(big_lake, gamma, algorithm)
 

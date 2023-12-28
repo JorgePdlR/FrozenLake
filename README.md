@@ -48,6 +48,9 @@ Note: This project uses Python3.10.
   
 2. Run code: python main.py
 
+3. If you install new libraries, to automatically add it and the version to the list of required libraries run:
+- pip freeze > requirements.txt 
+
 ---
 
 

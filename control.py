@@ -184,18 +184,20 @@ class SARSA:
         self.alpha = learning_rate
         self.epsilon = np.linspace(epsilon, 0, max_iterations)
         self.gamma = discount_rate
-        self.state_init = env.reset()
         self.policy = [0]*env.n_states
         self.value = [0]*self.env.n_states
+        print('Flat Labrynth:',self.env.lake_flat) # start (&), frozen (.), hole (#), goal ($)
         # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
         Q = [[0]*self.env.n_actions]*self.env.n_states
 
-        for i in self.N:
-            state = self.state_init
+        for i in range(self.N):
+            print('\nEpisode:',i+1)
+            state = self.env.reset()
             # selection an action based on epsilon greedy policy
             e = np.random.random()
+
             if e<self.epsilon[i]:
                 action = np.random.choice(range(self.env.n_actions))
             else:
@@ -203,21 +205,30 @@ class SARSA:
             done = False
 
             while not done:
+                print('\tSteps taken:',self.env.n_steps)
+                print('\tState:', state)
                 new_state, reward, done = self.env.step(action)
+                print('\tDone?', done)
                 # Select a_prime using epsilon greedy approach
                 e = np.random.random()
+                print('\t\te:',e,'\tepsilon:',self.epsilon[i])
+
+                # choosing the next action
                 if e < self.epsilon[i]:
                     new_action = np.random.choice(range(self.env.n_actions))
+                    print('\t\tRandom action:', new_action)
                 else:
                     new_action = np.argmax(Q[state])
+                    print('\t\tBEST action:', new_action)
                 # temporal difference learning
-                Q[state][action] += self.alpha*(reward +
-                                                self.gamma*Q[new_state][new_action] -
-                                                Q[state][action])
+                temporal_diff = reward + self.gamma*Q[new_state][new_action] - Q[state][action]
+                print('\t\tTemporal Difference:',temporal_diff)
+                Q[state][action] += self.alpha*temporal_diff
+
                 state, action = new_state, new_action
 
-        self.policy[s] = np.argmax(Q[s], axis=1)
-        self.value[s] = np.max(Q[s], axis=1)
+        self.policy = np.argmax(Q, axis=1)
+        self.value = np.max(Q, axis=1)
 
 
 class Q:
