@@ -274,7 +274,7 @@ class Q_Learning:
 
 
 class Linear_Q_Learning:
-    def __init__(self, env, max_iterations, learning_rate=0.01, epsilon=0.5, discount_rate=0.9):
+    def __init__(self, env, max_iterations, learning_rate=0.1, epsilon=0.5, discount_rate=0.9):
         self.linear_env = env
         self.N = max_iterations
         self.alpha = learning_rate
@@ -287,9 +287,8 @@ class Linear_Q_Learning:
 
     def make_policy(self, seed=101):
 
-        # Initiate theta and q
-        theta = np.zeros((self.linear_env.n_features, self.linear_env.n_actions))
-        q = np.zeros(self.linear_env.n_actions)
+        # Initiate theta
+        theta = np.zeros(self.linear_env.n_features)
 
         # For all the iterations
         for i in range(self.N):
@@ -298,16 +297,18 @@ class Linear_Q_Learning:
             s = 0
             f = self.linear_env.reset()
 
-            for a in range(self.linear_env.n_actions):
-                q[a] = np.sum(theta * f[s,a])
+            # Linear decay for learning rate and exploration factor
+            eta = self.alpha * (1.0 - i / self.N)
+            epsilon = self.epsilon * (1.0 - i / self.N)
 
-            # features = self.linear_env.encode_state(s)
-            # q = np.dot(features, theta).flatten()
+            # Update Q
+            q = f.dot(theta)
 
             while s != (self.linear_env.n_states-1):
 
                 e = np.random.random()
-                if e < self.epsilon:
+
+                if e < epsilon:
                     a = np.random.choice(range(self.linear_env.n_actions))
                 else:
                     a = np.argmax(q)
@@ -321,18 +322,21 @@ class Linear_Q_Learning:
 
                 delta = r - q[a]
 
-                for a_prime in range(self.linear_env.n_actions):
-                    q[a_prime] = np.sum(theta * features_prime[a_prime,s_prime])
+                q = features_prime.dot(theta)
 
-                # q_prime = np.dot(features_prime, theta)
-                delta = delta + self.gamma * np.max(q)
-                theta += (self.alpha * delta) * f.T
+                e = np.random.random()
+                if e < epsilon:
+                    new_action = np.random.choice(range(self.linear_env.n_actions))
+                else:
+                    new_action = np.argmax(q)
 
-                p, v = self.linear_env.decode_policy(theta)
-                print('q: ',theta.shape)
+                delta += self.gamma * q[new_action]
 
+                # theta = theta + learning_rate * td_error * feature
+                theta += eta * delta * f[a, :]
+                f = features_prime
                 s = s_prime
 
-        self.policy, self.value = self.linear_env.decode_policy(theta)
-        return self.policy, self.value
+        policy, value = self.linear_env.decode_policy(theta)
+        return policy, value
 
