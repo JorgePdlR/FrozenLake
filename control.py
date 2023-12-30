@@ -211,8 +211,8 @@ class LinearWrapper:
 
     def step(self, action):
         state, reward, done = self.env.step(action)
-        print('New state:',state)
-        print('Reached goal?', state == 15)
+        if state == 15:
+            print('Reached goal')
 
         return self.encode_state(state), reward, done
 
@@ -340,4 +340,37 @@ class SARSA:
 
         self.policy, self.value = self.env.decode_policy(weights)
 
+    def linear_sarsa(self):
+        theta = np.zeros(self.env.n_features)
 
+        for i in range(self.N):
+            done = False
+            features = self.env.reset()
+            e = 0
+            q = features.dot(theta)
+
+            # selecting an action based on epsilon greedy policy
+            if self.random_state.rand() < self.epsilon[i]:
+                action = self.random_state.choice(self.env.n_actions)
+            else:
+                action = np.argmax(q)
+
+            while not done:
+                e = self.gamma * self.alpha[i] * e + features[action, :]
+                new_features, reward, done = self.env.step(action)
+                delta = reward - q[action]
+
+                q = new_features.dot(theta)
+
+                if self.random_state.rand() < self.epsilon[i]:
+                    new_action = self.random_state.choice(self.env.n_actions)
+                else:
+                    new_action = np.argmax(q)
+
+                delta = delta + self.gamma*q[new_action]
+
+                theta += self.alpha[i] * delta * e
+                features = new_features
+                action = new_action
+
+        self.policy, self.value = self.env.decode_policy(theta)

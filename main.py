@@ -26,7 +26,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 ['.', '.', '.', '#'],
                 ['#', '.', '.', '$']]
 
-    env = FrozenLake(lake, slip=0.1, max_steps=256, seed=seed)
+    env = FrozenLake(lake, slip=0.1, max_steps=64, seed=seed)
 
     if algorithm == 'policy_iteration':
         print('*'*10,'Policy iteration','*'*10)
@@ -43,13 +43,14 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
         if big_lake:
             max_episodes = 5000
         else:
-            max_episodes = 1000
+            max_episodes = 4000
 
         if linear_approx:
             env = control.LinearWrapper(env)
-            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.9,
+            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                                   max_iterations=max_episodes, seed=seed)
-            model.make_linear_approx_policy()
+            #model.make_linear_approx_policy()
+            model.linear_sarsa()
 
         else:
             model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=1,
