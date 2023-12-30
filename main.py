@@ -49,8 +49,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
             env = control.LinearWrapper(env)
             model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                                   max_iterations=max_episodes, seed=seed)
-            #model.make_linear_approx_policy()
-            model.linear_sarsa()
+            model.make_linear_approx_policy()
 
         else:
             model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=1,
