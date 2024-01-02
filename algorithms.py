@@ -414,7 +414,6 @@ class DeepQNetwork(torch.nn.Module):
     def forward(self, x):
         x = torch.tensor(x, dtype=torch.float)
 
-        # TODO: Computing forward model
         # Convolutional layer
         x = self.conv_layer(x)
         # Rectified linear unit activation
@@ -445,7 +444,6 @@ class DeepQNetwork(torch.nn.Module):
 
         target = torch.tensor(rewards, dtype=torch.float32) + gamma * next_q
 
-        # TODO: the loss is the mean squared error between `q` and `target`
         # loss function - mean squared of temporal differences
         tmp_diff_loss = torch.nn.MSELoss()
         loss = tmp_diff_loss(q, target)
@@ -467,7 +465,6 @@ class ReplayBuffer:
         self.buffer.append(transition)
 
     def draw(self, batch_size):
-        # TODO:
         # Get indices of batch_size from self.buffer without replacement
         transitions_index = self.random_state.choice(len(self.buffer), batch_size, replace=False)
         # Get transitions that correspond to the previous indices
