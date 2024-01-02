@@ -3,7 +3,7 @@ import control
 import deepQnetwork as deepQ
 import sys
 import numpy as np
-
+import config as conf
 
 def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 linear_approx=False):
@@ -26,18 +26,18 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 ['.', '.', '.', '#'],
                 ['#', '.', '.', '$']]
 
-    env = FrozenLake(lake, slip=0.1, max_steps=64, seed=seed)
+    env = FrozenLake(lake, slip=0.1, max_steps=16, seed=seed)
 
     if algorithm == 'policy_iteration':
         print('*'*10,'Policy iteration','*'*10)
         model = control.TabularModelBased(env)
-        policy, value = model.policy_iteration(gamma, theta=0.001, max_iterations=128)
-        env.render(policy, value)
+        model.policy_iteration(gamma, theta=0.001, max_iterations=128)
+        env.render(model.policy, model.value)
     elif algorithm == 'value_iteration':
         print('*'*10,'Value iteration','*'*10)
         model = control.TabularModelBased(env)
-        policy, value = model.value_iteration(gamma, theta=0.001, max_iterations=128)
-        env.render(policy, value)
+        model.value_iteration(gamma, theta=0.001, max_iterations=128)
+        env.render(model.policy, model.value)
     elif algorithm == 'sarsa':
         print('*'*10,'SARSA CONTROL','*'*10)
         if big_lake:
@@ -52,7 +52,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
             model.make_linear_approx_policy()
 
         else:
-            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=1,
+            model = control.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                                   max_iterations=max_episodes, seed=seed)
             model.make_policy()
         print('Policy:',model.policy)
@@ -80,13 +80,29 @@ if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
     algorithm = 'sarsa'
+    linear_approx = False
+    verbose = False
 
-    if len(sys.argv) == 4:
-        big_lake = bool(sys.argv[1])
-        gamma = float(sys.argv[2])
-        algorithm = str(sys.argv[3])
-    else:
-        print('Parameters not provided, using default\n')
+    for i in sys.argv:
+        if i == "-v" or i == "-verbose" or i == "v" or i == "verbose":
+            verbose = True
+        elif i == "big_lake" or i == "-big_lake":
+            big_lake = True
+        elif i == "linear_approx" or i == "-linear_approx":
+            linear_approx = True
+        elif (i == "sarsa" or i == "policy_iteration" or i == "value_iteration" or i == "value_iteration"
+              or i == "deep_Q_network"):
+            algorithm = str(i)
+        else:
+            try:
+                float(i)
+                gamma = float(i)
+            except ValueError:
+                None
 
-    find_policy(big_lake, gamma, algorithm, linear_approx=True)
+    conf.init(verbose)
+    conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",
+                    linear_approx, "gamma", gamma)
+
+    find_policy(big_lake, gamma, algorithm, linear_approx)
 

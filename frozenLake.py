@@ -1,5 +1,6 @@
 import numpy as np
 import contextlib
+import config as conf
 
 # Configures numpy print options
 @contextlib.contextmanager

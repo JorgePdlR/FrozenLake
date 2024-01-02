@@ -1,8 +1,9 @@
 import sys
 
 import numpy as np
-
 import frozenLake
+import config as conf
+
 
 
 class TabularModelBased:
@@ -15,6 +16,8 @@ class TabularModelBased:
     """
     def __init__(self, env):
         self.env = env
+        self.policy = [0]*self.env.n_states
+        self.value = [0]*self.env.n_states
 
     def policy_evaluation(self, policy, gamma, theta, max_iterations):
         value = np.zeros(self.env.n_states, dtype=np.float32)
@@ -114,7 +117,7 @@ class TabularModelBased:
         # improvements in the policy
         for i in range(max_iterations):
             prv_policy = policy
-            # print("Iteration ", i)
+            conf.vprint("Iteration ", i)
             # Get value of current policy
             value = self.policy_evaluation(policy, gamma, theta, max_iterations)
             # Improve policy
@@ -125,8 +128,9 @@ class TabularModelBased:
             if not np.any(equal == False):
                 break
 
-        # Return the optimal policy and value of tha policy
-        return policy, value
+        # Set the optimal policy and value
+        self.value = value
+        self.policy = policy
 
     def value_iteration(self, gamma, theta, max_iterations, value=None):
         if value is None:
@@ -136,7 +140,7 @@ class TabularModelBased:
 
         # Keep iterating while we have budget, or if the delta error is reached
         for i in range(max_iterations):
-            # print("Iteration ", i)
+            conf.vprint("Iteration ", i)
             delta = 0
 
             # Go through all the states
@@ -173,8 +177,9 @@ class TabularModelBased:
         # Update policy given the optimal value
         policy = self.policy_improvement(value, gamma)
 
-        # Return optimal policy and value
-        return policy, value
+        # Set optimal policy and value
+        self.value = value
+        self.policy = policy
 
 
 class LinearWrapper:
@@ -223,9 +228,8 @@ class SARSA:
     This class implements the SARSA (state-action-reward-state-action) algorithm based
     on Temporal Difference Learning.
     """
-    def __init__(self, env:frozenLake.FrozenLake|LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5, discount_rate=0.9,
-                 seed=100):
-        print('Flat Labrynth:', env.lake_flat)  # start (&), frozen (.), hole (#), goal ($)
+    def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
+                 discount_rate=0.9, seed=0):
         self.env = env
         self.N = max_iterations
         self.alpha = np.linspace(learning_rate, 0, max_iterations)
@@ -234,108 +238,109 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
-        # up, left, down, right = [0, 1, 2, 3]
 
     def make_policy(self):
         Q = np.zeros((self.env.n_states,self.env.n_actions))
 
         for i in range(self.N):
-            print('\nEpisode:',i+1)
+            conf.vprint('\nEpisode:',i+1)
             state = self.env.reset()
 
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
-            if e<self.epsilon[i]:
+            if e < self.epsilon[i]:
                 action = self.random_state.choice(self.env.n_actions)
             else:
-                action = np.argmax(Q[state])
+                qmax = max(Q[state])
+                best = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[state][a])]
+                action = self.random_state.choice(best)
             done = False
 
             while not done:
-                print('\t\tSteps taken:',self.env.n_steps)
+                conf.vprint('\t\tSteps taken:',self.env.n_steps)
                 new_state, reward, done = self.env.step(action)
 
                 # Select a_prime using epsilon greedy approach
                 e = self.random_state.random()
-                print('\t\te:',e,'\tepsilon:',self.epsilon[i])
+                conf.vprint('\t\te:', e, '\tepsilon:', self.epsilon[i])
 
                 # choosing the next action
                 if e < self.epsilon[i]:
                     new_action = self.random_state.choice(self.env.n_actions)
-                    print('\t\tRandom new action chosen')
+                    conf.vprint('\t\tRandom new action chosen')
                 else:
-                    new_action = np.argmax(Q[new_state])
-                    print('\t\tBEST new action chosen')
-                print('\t\tState:', state, '\tAction:',action, '\tReward:',reward,'\tNew state:',new_state, '\tNew action:',new_action)
+                    qmax = max(Q[new_state])
+                    best = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[new_state][a])]
+                    new_action = self.random_state.choice(best)
+                    conf.vprint('\t\tBEST new action chosen')
+                conf.vprint('\t\tState:', state, '\tAction:', action, '\tReward:', reward, '\tNew state:', new_state, '\tNew action:', new_action)
                 # temporal difference learning
                 temporal_diff = reward + self.gamma*Q[new_state][new_action] - Q[state][action]
-                print('\t\tTemporal Difference:',temporal_diff)
+                conf.vprint('\t\tTemporal Difference:',temporal_diff)
                 Q[state][action] += self.alpha[i]*temporal_diff
 
                 state, action = new_state, new_action
-                print('\tDone?', done)
+                conf.vprint('\tDone?', done)
 
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
 
     def make_linear_approx_policy(self):
-        Q = np.zeros((self.env.n_states, self.env.n_actions))
-
-        # weights = self.random_state.random(self.env.n_features)/100
         weights = np.zeros(self.env.n_features)
-        print('weights',weights.shape)
+        conf.vprint('weights',weights.shape)
         for i in range(self.N):
-            print('\nEpisode:', i+1)
+            conf.vprint('\nEpisode:', i+1)
             done = False
             state = self.env.reset()
-            print('Initial state', state.shape)
+            conf.vprint('Initial state', state.shape)
 
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
-            print('\te:',e,'\tepsilon:',self.epsilon[i])
+            conf.vprint('\te:',e,'\tepsilon:',self.epsilon[i])
 
             features = state
-            print('features:', features.shape)
-            # q_pred = features.dot(weights)
-            q_pred = [np.dot(weights, features[a]) for a in range(self.env.n_actions)]
-            print('q_pred shape', q_pred)
+            conf.vprint('features:', features.shape)
+            q_pred = features.dot(weights)
+            conf.vprint('q_pred shape', q_pred)
 
             if e < self.epsilon[i]:
                 action = self.random_state.choice(self.env.n_actions)
             else:
-                action = np.argmax(q_pred)
+                qmax = max(q_pred)
+                best = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred[a])]
+                action = self.random_state.choice(best)
 
             while not done:
-                print('\t\tSteps taken:',self.env.env.n_steps)
+                conf.vprint('\t\tSteps taken:',self.env.env.n_steps)
                 new_state, reward, done = self.env.step(action)
                 new_features = new_state
-                # q_pred_new = new_features.dot(weights)
-                q_pred_new = [np.dot(weights, new_features[a]) for a in range(self.env.n_actions)]
-                print('new q',q_pred_new)
+                q_pred_new = new_features.dot(weights)
+
+                conf.vprint('new q',q_pred_new)
                 e = self.random_state.random()
-                print('\t\te:',e,'\tepsilon:',self.epsilon[i])
+                conf.vprint('\t\te:',e,'\tepsilon:',self.epsilon[i])
                 if e < self.epsilon[i]:
                     new_action = self.random_state.choice(self.env.n_actions)
-                    print('\t\tRandom new action chosen',new_action)
+                    conf.vprint('\t\tRandom new action chosen',new_action)
                 else:
-                    new_action = np.argmax(q_pred_new)
-                    print('\t\tBest new action chosen',new_action)
+                    qmax = max(q_pred_new)
+                    best = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred_new[a])]
+                    new_action = self.random_state.choice(best)
 
-                print('\t\tTemporal Difference')
+                    conf.vprint('\t\tBest new action chosen',new_action)
+
+                conf.vprint('\t\tTemporal Difference')
                 delta = reward - q_pred[action] + self.gamma*q_pred_new[new_action]
                 q_pred = q_pred_new
-                print('delta',delta)
-                print('weights', weights.shape)
-                print('features', features.shape)
+                conf.vprint('delta',delta)
+                conf.vprint('weights', weights.shape)
+                conf.vprint('features', features.shape)
                 weights += self.alpha[i]*delta*features[action]
-                # print('feature action', features[action])
+                conf.vprint('feature action', features[action])
 
                 state, action = new_state, new_action
                 features = state
-                print('\tDone?', done)
-                print('state',state.shape)
-            # print(self.env.lake_flat)
-            # print(self.policy,'\n', self.value)
-            # sys.exit()
+                conf.vprint('\tDone?', done)
+                conf.vprint('state', state.shape)
 
         self.policy, self.value = self.env.decode_policy(weights)

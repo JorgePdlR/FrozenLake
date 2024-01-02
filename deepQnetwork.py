@@ -1,6 +1,7 @@
 import numpy as np
 import torch as torch
 from collections import deque
+import config as conf
 import frozenLake
 
 
