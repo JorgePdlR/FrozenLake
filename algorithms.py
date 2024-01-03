@@ -356,6 +356,112 @@ class SARSA:
 
         self.policy, self.value = self.env.decode_policy(weights)
 
+class Qlearning:
+    def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
+                 discount_rate=0.9, seed=0):
+        self.env = env
+        self.N = max_iterations
+        self.alpha = np.linspace(learning_rate, 0, max_iterations)
+        self.epsilon = np.linspace(epsilon, 0, max_iterations)
+        self.gamma = discount_rate
+        self.policy = [0]*self.env.n_states
+        self.value = [0]*self.env.n_states
+        self.random_state = np.random.RandomState(seed)
+        self.episode_discounted_rewards = [] # TODO
+        self.optimal_policies = []
+
+    def make_policy(self):
+        # Initiate the q values
+        q = np.zeros((self.env.n_states, self.env.n_actions))
+
+        # For all the iterations
+        for i in range(self.N):
+
+            s = self.env.reset()  # initial state
+
+            while s != self.env.absorbing_state:
+
+                e = self.random_state.random()
+                if e < self.epsilon[i]:
+                    a = np.random.choice(range(self.env.n_actions))
+                else:
+                    qmax = max(q[s])
+                    best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[s][act])]
+                    a = self.random_state.choice(best_actions)
+                    #a = np.argmax(q[s, :])
+
+                s_prime, r, done = self.env.step(a)
+
+                # update the q value
+                q[s, a] += self.alpha[i] * (r + self.gamma * np.max(q[s_prime, :]) - q[s, a])
+
+                # Move to the next state
+                s = s_prime
+
+        self.policy = q.argmax(axis=1)
+        self.value = q.max(axis=1)
+        return self.policy, self.value
+
+
+    def make_linear_approx_policy(self):
+        # Initiate theta
+        theta = np.zeros(self.env.n_features)
+
+        eta = self.alpha * (1.0 - np.linspace(0, 1, self.N))
+        epsilon = self.epsilon * (1.0 - np.linspace(0, 1, self.N))
+
+        # For all the iterations
+        for i in range(self.N):
+
+            # Initial state and feature
+            done = False
+            s = 0
+            f = self.env.reset()
+
+            # Update Q
+            q = f.dot(theta)
+
+            # While s is not in an absorbing state
+            while s != (self.env.n_states - 1):
+
+                e = self.random_state.random()
+                if e < self.epsilon[i]:
+                    a = np.random.choice(range(self.env.n_actions))
+                else:
+                    qmax = max(q)
+                    best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[act])]
+                    a = self.random_state.choice(best_actions)
+                    #a = np.argmax(q)
+
+                # Take step with action a
+                features_prime, r, done = self.env.step(a)
+
+                # Extract s_prime from the features prime
+                indices = np.argmax(features_prime, axis=1)
+                states = [np.unravel_index(index, (self.env.n_states, self.env.n_actions))[0] for index in
+                          indices]
+                s_prime = states[0]
+
+                # update delta
+                delta = r - q[a]
+
+                # update the value for q
+                q = features_prime.dot(theta)
+
+                # Get the best new action with updated q
+                # temporal difference
+                new_action = np.argmax(q)
+                delta += self.gamma * q[new_action]
+
+                # Update the theta value
+                theta += eta[i] * delta * f[a, :]
+                f = features_prime
+                s = s_prime
+
+        self.policy, self.value = self.env.decode_policy(theta)
+        return self.policy, self.value
+
+
 # TODO: class QLearning:
 class FrozenLakeImageWrapper:
     def __init__(self, env):

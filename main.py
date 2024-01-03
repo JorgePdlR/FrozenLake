@@ -59,9 +59,10 @@ def main():
     print('')
 
     print('## Q-learning')
-    #policy, value = q_learning(env, max_episodes, eta=0.5, gamma=gamma,
-    #                           epsilon=0.5, seed=seed)
-    #env.render(policy, value)
+    model = rl.Qlearning(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
+                     max_iterations=max_episodes, seed=seed)
+    model.make_policy()
+    env.render(model.policy, model.value)
 
     print('')
     linear_env = rl.LinearWrapper(env)
@@ -78,10 +79,10 @@ def main():
 
     print('## Linear Q-learning')
 
-    #parameters = linear_q_learning(linear_env, max_episodes, eta=0.5, gamma=gamma,
-    #                               epsilon=0.5, seed=seed)
-    #policy, value = linear_env.decode_policy(parameters)
-    #linear_env.render(policy, value)
+    model = rl.Qlearning(linear_env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
+                         max_iterations=max_episodes, seed=seed)
+    model.make_linear_approx_policy()
+    linear_env.render(model.policy, model.value)
 
     print('')
 
