@@ -5,6 +5,16 @@ from collections import deque
 import frozenLake
 import config as conf
 
+def moving_average(rewards, n=20):
+    mov_avg = [] #TODO
+    for reward_i in rewards[n:]:
+        pass
+
+    return mov_avg
+
+def param_search(params):
+    pass
+
 class TabularModelBased:
     """
     This class implements Tabular model-based algorithms:
@@ -237,6 +247,8 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
+        self.episode_discounted_rewards = [] # TODO
+        self.optimal_policies = []
 
     def make_policy(self):
         Q = np.zeros((self.env.n_states,self.env.n_actions))
@@ -251,8 +263,8 @@ class SARSA:
                 action = self.random_state.choice(self.env.n_actions)
             else:
                 qmax = max(Q[state])
-                best = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[state][a])]
-                action = self.random_state.choice(best)
+                best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[state][a])]
+                action = self.random_state.choice(best_actions)
             done = False
 
             while not done:
@@ -269,8 +281,8 @@ class SARSA:
                     conf.vprint('\t\tRandom new action chosen')
                 else:
                     qmax = max(Q[new_state])
-                    best = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[new_state][a])]
-                    new_action = self.random_state.choice(best)
+                    best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[new_state][a])]
+                    new_action = self.random_state.choice(best_actions)
                     conf.vprint('\t\tBEST new action chosen')
                 conf.vprint('\t\tState:', state, '\tAction:', action, '\tReward:', reward, '\tNew state:', new_state, '\tNew action:', new_action)
                 # temporal difference learning
@@ -306,8 +318,8 @@ class SARSA:
                 action = self.random_state.choice(self.env.n_actions)
             else:
                 qmax = max(q_pred)
-                best = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred[a])]
-                action = self.random_state.choice(best)
+                best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred[a])]
+                action = self.random_state.choice(best_actions)
 
             while not done:
                 conf.vprint('\t\tSteps taken:',self.env.env.n_steps)
@@ -323,8 +335,8 @@ class SARSA:
                     conf.vprint('\t\tRandom new action chosen',new_action)
                 else:
                     qmax = max(q_pred_new)
-                    best = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred_new[a])]
-                    new_action = self.random_state.choice(best)
+                    best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, q_pred_new[a])]
+                    new_action = self.random_state.choice(best_actions)
 
                     conf.vprint('\t\tBest new action chosen',new_action)
 
@@ -344,6 +356,7 @@ class SARSA:
 
         self.policy, self.value = self.env.decode_policy(weights)
 
+# TODO: class QLearning:
 class FrozenLakeImageWrapper:
     def __init__(self, env):
         self.env = env
@@ -473,7 +486,7 @@ class ReplayBuffer:
         # from the replay buffer
         return transitions
 
-
+# TODO: class DeepQLearning:
 def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
                             batch_size, target_update_frequency, buffer_size,
                             kernel_size, conv_out_channels, fc_out_features, seed):
