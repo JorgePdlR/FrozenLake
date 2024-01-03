@@ -45,7 +45,7 @@ def find_policy(big_lake=True, gamma=0.9, algorithm='value_iteration'):
 
     elif algorithm == 'Linear_Q_Learning':
         linear_env = LinearWrapper.LinearWrapper(env)
-        policy, value = control.Linear_Q_Learning(linear_env, 8000).make_policy()
+        policy, value = control.Linear_Q_Learning(linear_env, 4000).make_policy()
         linear_env.render(policy, value)
 
     elif algorithm == 'deep_Q_network':

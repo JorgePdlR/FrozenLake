@@ -282,61 +282,64 @@ class Linear_Q_Learning:
         self.gamma = discount_rate
         self.policy = [0] * env.n_states
         self.value = [0] * env.n_states
-        # up, left, down, right = [0, 1, 2, 3]
-        # [2 1 2 1 2 0 2 0 3 2 2 0 0 3 3 0 0]
+
 
     def make_policy(self, seed=101):
 
         # Initiate theta
         theta = np.zeros(self.linear_env.n_features)
 
+        eta = self.alpha * (1.0 - np.linspace(0, 1, self.N))
+        epsilon = self.epsilon * (1.0 - np.linspace(0, 1, self.N))
+
         # For all the iterations
         for i in range(self.N):
 
             # Initial state and feature
+            done = False
             s = 0
             f = self.linear_env.reset()
-
-            # Linear decay for learning rate and exploration factor
-            eta = self.alpha * (1.0 - i / self.N)
-            epsilon = self.epsilon * (1.0 - i / self.N)
 
             # Update Q
             q = f.dot(theta)
 
+            # While s is not in an absorbing state
             while s != (self.linear_env.n_states-1):
 
                 e = np.random.random()
 
-                if e < epsilon:
+                if e < epsilon[i]:
                     a = np.random.choice(range(self.linear_env.n_actions))
                 else:
                     a = np.argmax(q)
 
+                # Take step with action a
                 features_prime, r, done = self.linear_env.step(a)
 
+                # Extract s_prime from the features prime
                 indices = np.argmax(features_prime, axis=1)
                 states = [np.unravel_index(index, (self.linear_env.n_states, self.linear_env.n_actions))[0] for index in
                           indices]
                 s_prime = states[0]
-
+                print(str(done) + 's_prime:'+str(s_prime))
+                # update delta
                 delta = r - q[a]
 
+                # update the value for q
                 q = features_prime.dot(theta)
 
-                e = np.random.random()
-                if e < epsilon:
-                    new_action = np.random.choice(range(self.linear_env.n_actions))
-                else:
-                    new_action = np.argmax(q)
-
+                # Get the best new action with updated q
+                # temporal difference
+                new_action = np.argmax(q)
                 delta += self.gamma * q[new_action]
 
-                # theta = theta + learning_rate * td_error * feature
-                theta += eta * delta * f[a, :]
+                # Update the theta value
+                theta += eta[i] * delta * f[a, :]
                 f = features_prime
                 s = s_prime
 
-        policy, value = self.linear_env.decode_policy(theta)
-        return policy, value
+
+
+        return self.linear_env.decode_policy(theta)
+
 
