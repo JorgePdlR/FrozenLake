@@ -23,6 +23,16 @@ def moving_average(rewards, n=20):
 def param_search(params):
     pass
 
+def is_optimal_policy(env, policy, gamma, model):
+    modelTab = TabularModelBased(env)
+    policy_val = modelTab.policy_evaluation(policy, gamma, .001, 128)
+    if not model.optimal_provided:
+        modelTab.policy_iteration(gamma, theta=0.001, max_iterations=128)
+        model.optimal_model = modelTab.value
+        model.optimal_provided = True
+
+    return (model.optimal_model == policy_val).all()
+
 class TabularModelBased:
     """
     This class implements Tabular model-based algorithms:
@@ -246,7 +256,7 @@ class SARSA:
     on Temporal Difference Learning.
     """
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
-                 discount_rate=0.9, seed=0):
+                 discount_rate=0.9, seed=0, stopOptimal=False):
         self.env = env
         self.N = max_iterations
         self.alpha = np.linspace(learning_rate, 0, max_iterations)
@@ -255,8 +265,11 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
+        self.stopOptimal = stopOptimal
         self.episode_discounted_rewards = [] # TODO
         self.optimal_policies = []
+        self.optimal_model = []
+        self.optimal_provided = False
 
     def make_policy(self):
         Q = np.zeros((self.env.n_states,self.env.n_actions))
@@ -308,6 +321,11 @@ class SARSA:
 
             discountsum = discountedReward(episode_rewards, self.gamma)
             self.episode_discounted_rewards.append(discountsum)
+
+            if self.stopOptimal:
+                if is_optimal_policy(self.env, np.argmax(Q, axis=1), self.gamma, self):
+                    print("Total number of iterations for optimal policy", i)
+                    break
 
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
@@ -378,6 +396,12 @@ class SARSA:
 
             discountsum = discountedReward(episode_rewards, self.gamma)
             self.episode_discounted_rewards.append(discountsum)
+            if self.stopOptimal:
+                currentPolicy, _ = self.env.decode_policy(weights)
+                if is_optimal_policy(self.env, np.argmax(currentPolicy, axis=1), self.gamma, self):
+                    print("Total number of episodes for optimal policy", i)
+                    break
+
         self.policy, self.value = self.env.decode_policy(weights)
 
 class Qlearning:
@@ -618,8 +642,6 @@ class ReplayBuffer:
         return transitions
 
 # TODO: class DeepQLearning:
-
-
 def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
                             batch_size, target_update_frequency, buffer_size,
                             kernel_size, conv_out_channels, fc_out_features, seed):
