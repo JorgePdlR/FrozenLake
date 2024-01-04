@@ -422,7 +422,7 @@ class Qlearning:
             q = f.dot(theta)
 
             # While s is not in an absorbing state
-            while s != (self.env.n_states - 1):
+            while not done:
 
                 e = self.random_state.random()
                 if e < self.epsilon[i]:
@@ -435,12 +435,6 @@ class Qlearning:
 
                 # Take step with action a
                 features_prime, r, done = self.env.step(a)
-
-                # Extract s_prime from the features prime
-                indices = np.argmax(features_prime, axis=1)
-                states = [np.unravel_index(index, (self.env.n_states, self.env.n_actions))[0] for index in
-                          indices]
-                s_prime = states[0]
 
                 # update delta
                 delta = r - q[a]
@@ -456,7 +450,6 @@ class Qlearning:
                 # Update the theta value
                 theta += eta[i] * delta * f[a, :]
                 f = features_prime
-                s = s_prime
 
         self.policy, self.value = self.env.decode_policy(theta)
         return self.policy, self.value
