@@ -5,6 +5,14 @@ from collections import deque
 import frozenLake
 import config as conf
 
+
+def discountedReward(episode_rewards,gamma):
+    discounted_sum = 0
+    for t in (range(len(episode_rewards))):
+        pgamma = np.power(gamma, t)
+        discounted_sum += pgamma * episode_rewards[t]
+    return discounted_sum
+
 def moving_average(rewards, n=20):
     mov_avg = [] #TODO
     for reward_i in rewards[n:]:
@@ -257,6 +265,9 @@ class SARSA:
             conf.vprint('\nEpisode:',i+1)
             state = self.env.reset()
 
+            episode_rewards = []
+
+
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
             if e < self.epsilon[i]:
@@ -270,6 +281,8 @@ class SARSA:
             while not done:
                 conf.vprint('\t\tSteps taken:',self.env.n_steps)
                 new_state, reward, done = self.env.step(action)
+
+                episode_rewards.append(reward)
 
                 # Select a_prime using epsilon greedy approach
                 e = self.random_state.random()
@@ -293,6 +306,9 @@ class SARSA:
                 state, action = new_state, new_action
                 conf.vprint('\tDone?', done)
 
+            discountsum = discountedReward(episode_rewards, self.gamma)
+            self.episode_discounted_rewards.append(discountsum)
+
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
 
@@ -304,6 +320,8 @@ class SARSA:
             done = False
             state = self.env.reset()
             conf.vprint('Initial state', state.shape)
+
+            episode_rewards = []
 
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
@@ -324,6 +342,10 @@ class SARSA:
             while not done:
                 conf.vprint('\t\tSteps taken:',self.env.env.n_steps)
                 new_state, reward, done = self.env.step(action)
+
+                episode_rewards.append(reward)
+
+
                 new_features = new_state
                 q_pred_new = new_features.dot(weights)
 
@@ -354,6 +376,8 @@ class SARSA:
                 conf.vprint('\tDone?', done)
                 conf.vprint('state', state.shape)
 
+            discountsum = discountedReward(episode_rewards, self.gamma)
+            self.episode_discounted_rewards.append(discountsum)
         self.policy, self.value = self.env.decode_policy(weights)
 
 class Qlearning:
@@ -377,9 +401,10 @@ class Qlearning:
         # For all the iterations
         for i in range(self.N):
 
+            done = False
             s = self.env.reset()  # initial state
-
-            while s != self.env.absorbing_state:
+            episode_rewards = []
+            while not done:
 
                 e = self.random_state.random()
                 if e < self.epsilon[i]:
@@ -388,15 +413,18 @@ class Qlearning:
                     qmax = max(q[s])
                     best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[s][act])]
                     a = self.random_state.choice(best_actions)
-                    #a = np.argmax(q[s, :])
 
                 s_prime, r, done = self.env.step(a)
-
+                episode_rewards.append(r)
                 # update the q value
                 q[s, a] += self.alpha[i] * (r + self.gamma * np.max(q[s_prime, :]) - q[s, a])
 
+
+
                 # Move to the next state
                 s = s_prime
+            discountsum = discountedReward(episode_rewards,self.gamma)
+            self.episode_discounted_rewards.append(discountsum)
 
         self.policy = q.argmax(axis=1)
         self.value = q.max(axis=1)
@@ -415,8 +443,8 @@ class Qlearning:
 
             # Initial state and feature
             done = False
-            s = 0
             f = self.env.reset()
+            episode_rewards = []
 
             # Update Q
             q = f.dot(theta)
@@ -431,11 +459,12 @@ class Qlearning:
                     qmax = max(q)
                     best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[act])]
                     a = self.random_state.choice(best_actions)
-                    #a = np.argmax(q)
+
 
                 # Take step with action a
                 features_prime, r, done = self.env.step(a)
 
+                episode_rewards.append(r)
                 # update delta
                 delta = r - q[a]
 
@@ -450,6 +479,9 @@ class Qlearning:
                 # Update the theta value
                 theta += eta[i] * delta * f[a, :]
                 f = features_prime
+            discountsum = discountedReward(episode_rewards, self.gamma)
+            self.episode_discounted_rewards.append(discountsum)
+
 
         self.policy, self.value = self.env.decode_policy(theta)
         return self.policy, self.value
@@ -586,11 +618,15 @@ class ReplayBuffer:
         return transitions
 
 # TODO: class DeepQLearning:
+
+
 def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
                             batch_size, target_update_frequency, buffer_size,
                             kernel_size, conv_out_channels, fc_out_features, seed):
     random_state = np.random.RandomState(seed)
     replay_buffer = ReplayBuffer(buffer_size, random_state)
+
+    episode_discounted_rewards = []  # TODO
 
     dqn = DeepQNetwork(env, learning_rate, kernel_size, conv_out_channels,
                        fc_out_features, seed=seed)
@@ -601,6 +637,8 @@ def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
 
     for i in range(max_episodes):
         state = env.reset()
+
+        episode_rewards = []
 
         done = False
         while not done:
@@ -616,6 +654,8 @@ def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
 
             next_state, reward, done = env.step(action)
 
+            episode_rewards.append(reward)
+
             replay_buffer.append((state, action, reward, next_state, done))
 
             state = next_state
@@ -627,4 +667,8 @@ def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
         if (i % target_update_frequency) == 0:
             tdqn.load_state_dict(dqn.state_dict())
 
+        discountsum = discountedReward(episode_rewards, gamma)
+        episode_discounted_rewards.append(discountsum)
+
+    #return dqn,episode_discounted_rewards
     return dqn
