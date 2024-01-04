@@ -32,15 +32,15 @@ def main():
     print('')
 
     print('## Policy iteration')
-    model = rl.TabularModelBased(env)
-    model.policy_iteration(gamma, theta=0.001, max_iterations=128)
+    model = rl.TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
+    model.policy_iteration()
     env.render(model.policy, model.value)
 
     print('')
 
     print('## Value iteration')
-    model = rl.TabularModelBased(env)
-    model.value_iteration(gamma, theta=0.001, max_iterations=128)
+    model = rl.TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
+    model.value_iteration()
     env.render(model.policy, model.value)
 
     print('')
@@ -90,11 +90,11 @@ def main():
 
     print('## Deep Q-network learning')
 
-    dqn = rl.deep_q_network_learning(image_env, max_episodes, learning_rate=0.001,
-                                     gamma=gamma, epsilon=0.2, batch_size=32,
-                                     target_update_frequency=4, buffer_size=256,
-                                     kernel_size=3, conv_out_channels=4,
-                                     fc_out_features=8, seed=4)
+    model = rl.DeepQLearning(image_env, max_episodes, learning_rate=0.001, gamma=gamma,
+                             epsilon=0.2)
+    dqn = model.deep_q_network_learning(batch_size=32, target_update_frequency=4, buffer_size=256,
+                                        kernel_size=3, conv_out_channels=4,
+                                        fc_out_features=8, seed=4)
 
     policy, value = image_env.decode_policy(dqn)
     image_env.render(policy, value)

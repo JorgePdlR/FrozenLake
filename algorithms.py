@@ -23,15 +23,19 @@ def moving_average(rewards, n=20):
 def param_search(params):
     pass
 
+
 def is_optimal_policy(env, policy, gamma, model):
-    modelTab = TabularModelBased(env)
-    policy_val = modelTab.policy_evaluation(policy, gamma, .001, 128)
+    model_tab = TabularModelBased(env, gamma, .001, 128)
+    policy_val = model_tab.policy_evaluation(policy)
+
+    # Compute optimal policy if not provided
     if not model.optimal_provided:
-        modelTab.policy_iteration(gamma, theta=0.001, max_iterations=128)
-        model.optimal_model = modelTab.value
+        model_tab.policy_iteration()
+        model.optimal_model = model_tab.value
         model.optimal_provided = True
 
     return (model.optimal_model == policy_val).all()
+
 
 class TabularModelBased:
     """
@@ -41,17 +45,20 @@ class TabularModelBased:
         - Policy iteration
         - Value iteration
     """
-    def __init__(self, env):
+    def __init__(self, env, gamma=0.9, theta=0.001, max_iterations=128):
         self.env = env
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
+        self.gamma = gamma
+        self.theta = theta
+        self.max_iterations = max_iterations
 
-    def policy_evaluation(self, policy, gamma, theta, max_iterations):
+    def policy_evaluation(self, policy):
         value = np.zeros(self.env.n_states, dtype=np.float32)
 
         # Loop the number of iterations or while our error is greater than
         # the tolerance parameter
-        for i in range(max_iterations):
+        for i in range(self.max_iterations):
             delta = 0
             # Go through all tha states
             for state in range(self.env.n_states):
@@ -82,7 +89,7 @@ class TabularModelBased:
                         # action
                         rt = self.env.r(state_prime, state, a)
 
-                        state_product += pt * (rt + (gamma * value[state_prime]))
+                        state_product += pt * (rt + (self.gamma * value[state_prime]))
 
                     # Store product from all possible action in policy
                     policy_state_product += state_product * policy_p
@@ -94,12 +101,12 @@ class TabularModelBased:
                 delta = max(delta, abs(v - value[state]))
 
             # If our delta is smaller than the error value theta, stop
-            if delta < theta:
+            if delta < self.theta:
                 break
 
         return value
 
-    def policy_improvement(self, value, gamma):
+    def policy_improvement(self, value):
         improved_policy = np.zeros(self.env.n_states, dtype=int)
 
         # Go through all the states
@@ -119,7 +126,7 @@ class TabularModelBased:
                     # action
                     rt = self.env.r(state_prime, state, a)
 
-                    state_prime_q += pt * (rt + (gamma * value[state_prime]))
+                    state_prime_q += pt * (rt + (self.gamma * value[state_prime]))
 
                 # Store value of all actions of possible next states in a list
                 q.append(state_prime_q)
@@ -132,7 +139,7 @@ class TabularModelBased:
         # Return improved policy
         return improved_policy
 
-    def policy_iteration(self, gamma, theta, max_iterations, policy=None):
+    def policy_iteration(self, policy=None):
         if policy is None:
             policy = np.zeros(self.env.n_states, dtype=int)
         else:
@@ -142,13 +149,13 @@ class TabularModelBased:
 
         # Iterate the maximum number of iterations or while there are still
         # improvements in the policy
-        for i in range(max_iterations):
+        for i in range(self.max_iterations):
             prv_policy = policy
             conf.vprint("Iteration ", i)
             # Get value of current policy
-            value = self.policy_evaluation(policy, gamma, theta, max_iterations)
+            value = self.policy_evaluation(policy)
             # Improve policy
-            policy = self.policy_improvement(value, gamma)
+            policy = self.policy_improvement(value)
 
             # If policy cannot improve more we have the optimal policy
             equal = prv_policy == policy
@@ -159,14 +166,14 @@ class TabularModelBased:
         self.value = value
         self.policy = policy
 
-    def value_iteration(self, gamma, theta, max_iterations, value=None):
+    def value_iteration(self, value=None):
         if value is None:
             value = np.zeros(self.env.n_states)
         else:
             value = np.array(value, dtype=np.float32)
 
         # Keep iterating while we have budget, or if the delta error is reached
-        for i in range(max_iterations):
+        for i in range(self.max_iterations):
             conf.vprint("Iteration ", i)
             delta = 0
 
@@ -184,7 +191,7 @@ class TabularModelBased:
                         pt = self.env.p(state_prime, state, a)
                         rt = self.env.r(state_prime, state, a)
 
-                        state_product += pt * (rt + (gamma * value[state_prime]))
+                        state_product += pt * (rt + (self.gamma * value[state_prime]))
 
                     # Store evaluation of states in a list, we will decide which is
                     # the best outside this loop
@@ -198,11 +205,11 @@ class TabularModelBased:
                 delta = max(delta, abs(v - value[state]))
 
             # If our delta is smaller than the error value theta, stop
-            if delta < theta:
+            if delta < self.theta:
                 break
 
         # Update policy given the optimal value
-        policy = self.policy_improvement(value, gamma)
+        policy = self.policy_improvement(value)
 
         # Set optimal policy and value
         self.value = value
@@ -256,7 +263,7 @@ class SARSA:
     on Temporal Difference Learning.
     """
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
-                 discount_rate=0.9, seed=0, stopOptimal=False):
+                 discount_rate=0.9, seed=0, stop_optimal=False):
         self.env = env
         self.N = max_iterations
         self.alpha = np.linspace(learning_rate, 0, max_iterations)
@@ -265,9 +272,8 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
-        self.stopOptimal = stopOptimal
+        self.stopOptimal = stop_optimal
         self.episode_discounted_rewards = [] # TODO
-        self.optimal_policies = []
         self.optimal_model = []
         self.optimal_provided = False
 
@@ -404,9 +410,10 @@ class SARSA:
 
         self.policy, self.value = self.env.decode_policy(weights)
 
+
 class Qlearning:
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
-                 discount_rate=0.9, seed=0):
+                 discount_rate=0.9, seed=0, stop_optimal=False):
         self.env = env
         self.N = max_iterations
         self.alpha = np.linspace(learning_rate, 0, max_iterations)
@@ -416,7 +423,9 @@ class Qlearning:
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
         self.episode_discounted_rewards = [] # TODO
-        self.optimal_policies = []
+        self.optimal_model = []
+        self.optimal_provided = False
+        self.stopOptimal = stop_optimal
 
     def make_policy(self):
         # Initiate the q values
@@ -449,6 +458,11 @@ class Qlearning:
                 s = s_prime
             discountsum = discountedReward(episode_rewards,self.gamma)
             self.episode_discounted_rewards.append(discountsum)
+
+            if self.stopOptimal:
+                if is_optimal_policy(self.env, np.argmax(Q, axis=1), self.gamma, self):
+                    print("Total number of iterations for optimal policy", i)
+                    break
 
         self.policy = q.argmax(axis=1)
         self.value = q.max(axis=1)
@@ -641,56 +655,64 @@ class ReplayBuffer:
         # from the replay buffer
         return transitions
 
-# TODO: class DeepQLearning:
-def deep_q_network_learning(env, max_episodes, learning_rate, gamma, epsilon,
-                            batch_size, target_update_frequency, buffer_size,
-                            kernel_size, conv_out_channels, fc_out_features, seed):
-    random_state = np.random.RandomState(seed)
-    replay_buffer = ReplayBuffer(buffer_size, random_state)
 
-    episode_discounted_rewards = []  # TODO
+class DeepQLearning:
+    def __init__(self, env, max_episodes=128, learning_rate=0.5, epsilon=0.5,
+                 gamma=0.9, seed=0):
+        self.env = env
+        self.max_episodes = max_episodes
+        self.learning_rate = learning_rate
+        self.epsilon = epsilon
+        self.gamma = gamma
+        self.seed = seed
+        self.episode_discounted_rewards = [] # TODO
 
-    dqn = DeepQNetwork(env, learning_rate, kernel_size, conv_out_channels,
-                       fc_out_features, seed=seed)
-    tdqn = DeepQNetwork(env, learning_rate, kernel_size, conv_out_channels,
-                        fc_out_features, seed=seed)
+    def deep_q_network_learning(self, batch_size, target_update_frequency, buffer_size,
+                                kernel_size, conv_out_channels, fc_out_features, seed):
+        random_state = np.random.RandomState(seed)
+        replay_buffer = ReplayBuffer(buffer_size, random_state)
 
-    epsilon = np.linspace(epsilon, 0, max_episodes)
+        dqn = DeepQNetwork(self.env, self.learning_rate, kernel_size, conv_out_channels,
+                           fc_out_features, seed=seed)
+        tdqn = DeepQNetwork(self.env, self.learning_rate, kernel_size, conv_out_channels,
+                            fc_out_features, seed=seed)
 
-    for i in range(max_episodes):
-        state = env.reset()
+        epsilon = np.linspace(self.epsilon, 0, self.max_episodes)
 
-        episode_rewards = []
+        for i in range(self.max_episodes):
+            state = self.env.reset()
 
-        done = False
-        while not done:
-            if random_state.rand() < epsilon[i]:
-                action = random_state.choice(env.n_actions)
-            else:
-                with torch.no_grad():
-                    q = dqn(np.array([state]))[0].numpy()
+            episode_rewards = []
 
-                qmax = max(q)
-                best = [a for a in range(env.n_actions) if np.allclose(qmax, q[a])]
-                action = random_state.choice(best)
+            done = False
+            while not done:
+                if random_state.rand() < epsilon[i]:
+                    action = random_state.choice(self.env.n_actions)
+                else:
+                    with torch.no_grad():
+                        q = dqn(np.array([state]))[0].numpy()
 
-            next_state, reward, done = env.step(action)
+                    qmax = max(q)
+                    best = [a for a in range(self.env.n_actions) if np.allclose(qmax, q[a])]
+                    action = random_state.choice(best)
 
-            episode_rewards.append(reward)
+                next_state, reward, done = self.env.step(action)
 
-            replay_buffer.append((state, action, reward, next_state, done))
+                episode_rewards.append(reward)
 
-            state = next_state
+                replay_buffer.append((state, action, reward, next_state, done))
 
-            if len(replay_buffer) >= batch_size:
-                transitions = replay_buffer.draw(batch_size)
-                dqn.train_step(transitions, gamma, tdqn)
+                state = next_state
 
-        if (i % target_update_frequency) == 0:
-            tdqn.load_state_dict(dqn.state_dict())
+                if len(replay_buffer) >= batch_size:
+                    transitions = replay_buffer.draw(batch_size)
+                    dqn.train_step(transitions, self.gamma, tdqn)
 
-        discountsum = discountedReward(episode_rewards, gamma)
-        episode_discounted_rewards.append(discountsum)
+            if (i % target_update_frequency) == 0:
+                tdqn.load_state_dict(dqn.state_dict())
 
-    #return dqn,episode_discounted_rewards
-    return dqn
+            discountsum = discountedReward(episode_rewards, self.gamma)
+            self.episode_discounted_rewards.append(discountsum)
+
+        #return dqn,episode_discounted_rewards
+        return dqn

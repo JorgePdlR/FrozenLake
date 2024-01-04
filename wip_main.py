@@ -46,13 +46,13 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
     conf.vprint("Running with gamma", gamma, "max_steps", max_steps, "theta", theta)
     if algorithm == 'policy_iteration':
         print('*'*10,'Policy iteration','*'*10)
-        model = rl.TabularModelBased(env)
-        model.policy_iteration(gamma, theta=theta, max_iterations=128)
+        model = rl.TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
+        model.policy_iteration()
         env.render(model.policy, model.value)
     elif algorithm == 'value_iteration':
         print('*'*10,'Value iteration','*'*10)
         model = rl.TabularModelBased(env)
-        model.value_iteration(gamma, theta=theta, max_iterations=128)
+        model.value_iteration()
         env.render(model.policy, model.value)
     elif algorithm == 'sarsa':
         print('*'*10,'SARSA CONTROL','*'*10)
@@ -60,12 +60,12 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
         if linear_approx:
             env = rl.LinearWrapper(env)
             model = rl.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
-                                  max_iterations=max_episodes, seed=seed, stopOptimal=True)
+                             max_iterations=max_episodes, seed=seed, stop_optimal=False)
             model.make_linear_approx_policy()
 
         else:
             model = rl.SARSA(env, learning_rate=learning_rate, discount_rate=gamma, epsilon=epsilon,
-                                  max_iterations=max_episodes, seed=seed, stopOptimal=True)
+                             max_iterations=max_episodes, seed=seed, stop_optimal=False)
             model.make_policy()
         print('Policy:',model.policy)
         print('Value:',model.value)
@@ -73,6 +73,17 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
         rl.moving_average(model.episode_discounted_rewards)
     elif algorithm == 'q':
         print('*' * 10, 'Q learning Work In Progress', '*' * 10)
+        if linear_approx:
+            env = rl.LinearWrapper(env)
+            model = rl.Qlearning(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
+                                 max_iterations=max_episodes, seed=seed, stop_optimal=False)
+            model.make_linear_approx_policy()
+
+        else:
+            model = rl.Qlearning(env, learning_rate=learning_rate, discount_rate=gamma, epsilon=epsilon,
+                                 max_iterations=max_episodes, seed=seed, stop_optimal=False)
+            model.make_policy()
+        env.render(model.policy, model.value)
         # rl.moving_average(model.episode_discounted_rewards)
     elif algorithm == 'deep_Q_network':
         # Recreate frozen lake to update max_steps in case of the big lake
@@ -81,11 +92,12 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
         image_env = rl.FrozenLakeImageWrapper(env)
         print('*'*10,'Deep Q-network learning','*'*10)
 
-        dqn = rl.deep_q_network_learning(image_env, max_episodes, learning_rate=0.001,
-                                         gamma=gamma, epsilon=0.2, batch_size=32,
-                                         target_update_frequency=4, buffer_size=256,
-                                         kernel_size=3, conv_out_channels=4,
-                                         fc_out_features=8, seed=4)
+        model = rl.DeepQLearning(image_env, max_episodes, learning_rate=0.001, gamma=gamma,
+                                 epsilon=0.2)
+        dqn = model.deep_q_network_learning(batch_size=32, target_update_frequency=4, buffer_size=256,
+                                            kernel_size=3, conv_out_channels=4,
+                                            fc_out_features=8, seed=4)
+
         policy, value = image_env.decode_policy(dqn)
         image_env.render(policy, value)
     else:
@@ -119,7 +131,7 @@ if __name__ == '__main__':
     conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",
                 linear_approx, "gamma", gamma)
 
-    find_policy(big_lake, gamma, algorithm, linear_approx, .5, .8)
+    find_policy(big_lake, gamma, algorithm, linear_approx, .5, .5)
     #parameter_search(big_lake, gamma, algorithm, linear_approx)
 
 
