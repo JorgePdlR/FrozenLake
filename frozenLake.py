@@ -14,6 +14,9 @@ def _printoptions(*args, **kwargs):
 
 
 class EnvironmentModel:
+    """
+    Represents a model of an environment
+    """
     def __init__(self, n_states, n_actions, seed=None):
         self.n_states = n_states
         self.n_actions = n_actions
@@ -21,12 +24,37 @@ class EnvironmentModel:
         self.random_state = np.random.RandomState(seed)
 
     def p(self, next_state, state, action):
+        """
+        Returns the probability of transitioning from state to next
+        state given an action
+        :param next_state: Next state
+        :param state: Current state
+        :param action: Action
+        :return: Probability of transitioning given the state next state
+                 and action to perform
+        """
         raise NotImplementedError()
 
     def r(self, next_state, state, action):
+        """
+        Expected reward in having transitioned from state to next_state
+        given an action
+        :param next_state: Next state
+        :param state: Current state
+        :param action: Action
+        :return: Expected reward in transitioning from state to next_state
+                 given an action
+        """
         raise NotImplementedError()
 
     def draw(self, state, action):
+        """
+        Given a state an action return next state and reward of taking
+        the action
+        :param state: Current state
+        :param action: Action
+        :return: next state and reward for taking the action in the state
+        """
         p = [self.p(ns, state, action) for ns in range(self.n_states)]
         next_state = self.random_state.choice(self.n_states, p=p)
         reward = self.r(next_state, state, action)
@@ -35,6 +63,9 @@ class EnvironmentModel:
 
 
 class Environment(EnvironmentModel):
+    """
+    Interactive environment, inherits from EnvironmentModel
+    """
     def __init__(self, n_states, n_actions, max_steps, pi, seed=None):
         EnvironmentModel.__init__(self, n_states, n_actions, seed)
 
@@ -45,12 +76,24 @@ class Environment(EnvironmentModel):
             self.pi = np.full(n_states, 1. /n_states)
 
     def reset(self):
+        """
+        Restarts the interaction with the environment setting number of steps
+        and state to the default option
+        :return: default state
+        """
         self.n_steps = 0
         self.state = self.random_state.choice(self.n_states, p=self.pi)
 
         return self.state
 
     def step(self, action):
+        """
+        Given an action returns the new state, reward of taking the
+        action and if the interactions with the environment are done
+        :param action: Action to perform
+        :return: new state, reward of taking the action and if a
+                 terminal state was reached
+        """
         if action < 0 or action >= self.n_actions:
             raise Exception('Invalid action.')
 
@@ -62,10 +105,19 @@ class Environment(EnvironmentModel):
         return self.state, reward, done
 
     def render(self, policy=None, value=None):
+        """
+        Draws policy and values for each state in the environment
+        :param policy: Policy to render
+        :param value: Value for each state to render
+        :return: Nothing
+        """
         raise NotImplementedError()
 
 
 class FrozenLake(Environment):
+    """
+    Representation of the frozen lake environment
+    """
     def __init__(self, lake, slip, max_steps, seed=None):
         """
         lake: A matrix that represents the lake. For example:
@@ -98,6 +150,13 @@ class FrozenLake(Environment):
         Environment.__init__(self, n_states, n_actions, max_steps, pi, seed=seed)
 
     def step(self, action):
+        """
+        Given an action returns the new state, reward of taking the
+        action and if the interactions with the environment are done
+        :param action: Action to perform
+        :return: new state, reward of taking the action and if a
+                 terminal state was reached
+        """
         state, reward, done = Environment.step(self, action)
 
         done = (state == self.absorbing_state) or done
@@ -105,6 +164,15 @@ class FrozenLake(Environment):
         return state, reward, done
 
     def p(self, next_state, state, action):
+        """
+        Returns the probability of transitioning from state to next
+        state given an action
+        :param next_state: Next state
+        :param state: Current state
+        :param action: Action
+        :return: Probability of transitioning given the state next state
+                 and action to perform
+        """
         # Convert possible actions to directions for clarity of reading the code:
         up, left, down, right = [0, 1, 2, 3]
         # Probability of transitioning from state to next_state given an action
@@ -217,6 +285,15 @@ class FrozenLake(Environment):
         return pt
 
     def r(self, next_state, state, action):
+        """
+        Expected reward in having transitioned from state to next_state
+        given an action
+        :param next_state: Next state
+        :param state: Current state
+        :param action: Action
+        :return: Expected reward in transitioning from state to next_state
+                 given an action
+        """
         # Reward received by transitioning from state to next_state
         # given an action
         reward = 0.0
@@ -229,6 +306,12 @@ class FrozenLake(Environment):
         return reward
 
     def render(self, policy=None, value=None):
+        """
+        Draws policy and values for each state in the environment
+        :param policy: Policy to render
+        :param value: Value for each state to render
+        :return: Nothing
+        """
         if policy is None:
             lake = np.array(self.lake_flat)
 
@@ -250,8 +333,14 @@ class FrozenLake(Environment):
             with _printoptions(precision=3, suppress=True):
                 print(value[:-1].reshape(self.lake.shape))
 
+
 def play(big_lake=False):
-    seed=0
+    """
+    Function to interact with the frozen lake
+    :param big_lake: If True use big lake otherwise use
+                     small lake
+    """
+    seed = 0
     if big_lake:
         lake = [['&', '.', '.', '.', '.', '.', '.', '.'],
                 ['.', '.', '.', '.', '.', '.', '.', '.'],

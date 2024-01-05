@@ -7,6 +7,7 @@ import algorithms as rl
 import numpy as np
 import config as conf
 
+
 def sum_discounted_reward(episode_rewards:[], gamma:float) -> float:
     """
     Given rewards for each step in the episode, the method calculates
@@ -22,6 +23,7 @@ def sum_discounted_reward(episode_rewards:[], gamma:float) -> float:
 
     return discounted_sum
 
+
 def moving_average(rewards:[], size=20) -> []:
     """
     Calculates the moving averages of rewards in a given window
@@ -36,6 +38,7 @@ def moving_average(rewards:[], size=20) -> []:
 
     return sample_avgs
 
+
 def plot_rewards(y:[], algorithm:str) -> None:
     """
     Using matplotlib to plot a line chart to show rewards
@@ -49,17 +52,22 @@ def plot_rewards(y:[], algorithm:str) -> None:
     plt.ylabel('Sum of Discounted Rewards', fontsize=12)
     plt.show()
 
+
 def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bool):
     """
-    Finds the best parameter values for an algorithm in a given envivonment
-    :param big_lake:
-    :param gamma:
-    :param algorithm:
-    :param linear_approx:
-    :return:
+    Finds the best parameter values for an algorithm in a given environment
+    :param big_lake: Indicates if big lake or small lake will be used as
+                     environmental model
+    :param gamma: Discount factor
+    :param algorithm: Name of the algorithm to execute
+    :param linear_approx: Indicates if linear approximation should be used
+                           with the provided algorithm (if exists)
+    :return: Nothing
     """
     values = [0.1, 0.3, 0.5, 0.7, 0.9]
 
+    # Try all possible combinations of values with itself. It represents
+    # learning rate and exploration factor
     for i in values:
         for j in values:
             print("Using learning rate", i, "exploration factor", j)
@@ -69,7 +77,7 @@ def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bo
 def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 linear_approx=False, learning_rate=0.5, epsilon=0.5, stop_at_convergence=False):
     """
-
+    Find a policy for the indicated environment using the model provided in algorithm
     :param big_lake: to use big_lake environment or not
     :param gamma: discount factor
     :param algorithm: model based or model-free algorithms
@@ -121,7 +129,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
         if linear_approx:
             env = rl.LinearWrapper(env)
             model = rl.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
-                                  max_iterations=max_episodes, seed=seed, stop_optimal=stop_at_convergence)
+                             max_iterations=max_episodes, seed=seed, stop_optimal=stop_at_convergence)
             model.make_linear_approx_policy()
 
         else:
@@ -142,14 +150,12 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
             model.make_policy()
 
     elif algorithm == 'deep_Q_network':
-        # Recreate frozen lake to update max_steps in case of the big lake
-        env = FrozenLake(lake, slip=0.1, max_steps=np.array(lake).size, seed=seed)
-
         model = rl.DeepQLearning(env, max_episodes, learning_rate=0.001, gamma=gamma,
-                                 epsilon=0.2)
+                                 epsilon=0.2, seed=4)
         model.make_policy(batch_size=32, target_update_frequency=4, buffer_size=256,
-                                            kernel_size=3, conv_out_channels=4,
-                                            fc_out_features=8, seed=4)
+                          kernel_size=3, conv_out_channels=4, fc_out_features=8)
+
+        model.env.render(model.policy, model.value)
 
     else:
         print('*'*10,algorithm+' Not Implemeted','*'*10)
@@ -190,7 +196,7 @@ if __name__ == '__main__':
             big_lake = True
         elif i == "linear_approx" or i == "-linear_approx":
             linear_approx = True
-        elif (i in algorithms):
+        elif i in algorithms:
             algorithm = str(i)
         else:
             try:

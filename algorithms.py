@@ -5,14 +5,17 @@ from collections import deque
 import frozenLake
 import config as conf
 
+
 def is_policy_optimal(env, policy, gamma, model):
     """
-
+    Given a policy, the environment for the provided policy,
+    the model that computed the policy and the discount factor,
+    determines if the provided policy is optimal.
     :param env:
-    :param policy:
-    :param gamma:
+    :param policy: Policy to evaluate and determine if it is optimal
+    :param gamma: Discount factor
     :param model:
-    :return:
+    :return: True if policy os optimal, otherwise False
     """
     model_tab = TabularModelBased(env, gamma, .001, 128)
     policy_val = model_tab.policy_evaluation(policy)
@@ -44,9 +47,10 @@ class TabularModelBased:
 
     def policy_evaluation(self, policy):
         """
-
+        Given a policy returns the expected return of starting in any state
+        s and following the policy
         :param policy:
-        :return:
+        :return: V(s) for all the states of the provided policy
         """
         value = np.zeros(self.env.n_states, dtype=np.float32)
 
@@ -102,9 +106,12 @@ class TabularModelBased:
 
     def policy_improvement(self, value):
         """
-
-        :param value:
-        :return:
+        Implements policy improvement algorithm. Returns a policy that is
+        V(s)' >= V(s) for all s in S. If there is no improvement then provided
+        policy is already optimal. (Caller should validate if the returned policy
+        is the same as the provided one)
+        :param value: V(s) for all the states in the environment
+        :return: Improved policy
         """
         improved_policy = np.zeros(self.env.n_states, dtype=int)
 
@@ -140,9 +147,13 @@ class TabularModelBased:
 
     def policy_iteration(self, policy=None):
         """
-
-        :param policy:
-        :return:
+        Policy iteration algorithm. Applies a sequence of evaluations and improvements
+        to an arbitrary (or provided) initial policy. When the policy cannot improve
+        it is guaranteed that the policy is optimal by the Bellman optimality equations.
+        Once the optimal policy is found policy and V(s) for that policy are stored in
+        the class parameters policy and value
+        :param policy: policy to improve (can be omitted)
+        :return: Nothing
         """
         if policy is None:
             policy = np.zeros(self.env.n_states, dtype=int)
@@ -172,9 +183,12 @@ class TabularModelBased:
 
     def value_iteration(self, value=None):
         """
-
-        :param value:
-        :return:
+        Value iteration algorithm. Improves the estimates for the values of each
+        state. Arbitrary or provided V for all the stages converges to V*. Once
+        V* is found policy and V(s) are stored in the class parameters policy
+        and value
+        :param value: V(s) for all the states in the environment (can be ommited)
+        :return: Nothing
         """
         if value is None:
             value = np.zeros(self.env.n_states)
@@ -297,6 +311,7 @@ class LinearWrapper:
         :return:
         """
         self.env.render(policy, value)
+
 
 class SARSA:
     """
@@ -493,7 +508,6 @@ class Qlearning:
 
         # For all the iterations
         for i in range(self.N):
-
             done = False
             s = self.env.reset()  # initial state
             episode_rewards = []
@@ -559,7 +573,6 @@ class Qlearning:
                     best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[act])]
                     a = self.random_state.choice(best_actions)
 
-
                 # Take step with action a
                 features_prime, r, done = self.env.step(a)
                 episode_rewards.append(r)
@@ -586,7 +599,13 @@ class Qlearning:
 
 class FrozenLakeImageWrapper:
     """
-
+    Creates an "image representation" of the frozen lake environment
+    compose of 4 channels of size h x w where h is the number of rows
+    and w is the number of columns of the lake grid:
+    - First channel: All elements are 0 except of the agent position
+    - Second channel: All elements are 0 except the start tile
+    - Third channel: All elements are 0 except the hole tiles
+    - Forth channel: All elements are 0 except the goal tile
     """
     def __init__(self, env):
         self.env = env
@@ -612,17 +631,18 @@ class FrozenLakeImageWrapper:
 
     def encode_state(self, state):
         """
-
-        :param state:
-        :return:
+        Returns the corresponding images given the state
+        :param state: environment state
+        :return: Image of the state
         """
         return self.state_image[state]
 
     def decode_policy(self, dqn):
         """
-
-        :param dqn:
-        :return:
+        Decodes the policy and value for each state of the provided
+        Deep Q network
+        :param dqn: Deep Q network
+        :return: Policy and values for each state
         """
         states = np.array([self.encode_state(s) for s in range(self.env.n_states)])
         q = dqn(states).detach().numpy()  # torch.no_grad omitted to avoid import
@@ -633,15 +653,19 @@ class FrozenLakeImageWrapper:
         return policy, value
 
     def reset(self):
-        """"""
-
+        """
+        Returns default state encoded in an image
+        :param:
+        :return: Default state encoded in an image
+        """
         return self.encode_state(self.env.reset())
 
     def step(self, action):
         """
-
-        :param action:
-        :return:
+        Executes action in the current state
+        :param action: action to execute in the current state
+        :return: New state, reward, True if
+                 terminal state otherwise False
         """
         state, reward, done = self.env.step(action)
 
@@ -649,17 +673,18 @@ class FrozenLakeImageWrapper:
 
     def render(self, policy=None, value=None):
         """
-
-        :param policy:
-        :param value:
-        :return:
+        Renders policy, value and environment
+        :param policy: Policy to render
+        :param value: Value for each state
+        :return: Nothing
         """
         self.env.render(policy, value)
 
 
 class DeepQNetwork(torch.nn.Module):
-    """"""
-
+    """
+    Convolutional neural network used by deep Q-network learning algorithm
+    """
     def __init__(self, env, learning_rate, kernel_size, conv_out_channels,
                  fc_out_features, seed):
         torch.nn.Module.__init__(self)
@@ -681,9 +706,9 @@ class DeepQNetwork(torch.nn.Module):
 
     def forward(self, x):
         """
-
-        :param x:
-        :return:
+        Computes forward pass of the model
+        :param x: input values
+        :return: forward result
         """
         x = torch.tensor(x, dtype=torch.float)
 
@@ -703,11 +728,11 @@ class DeepQNetwork(torch.nn.Module):
 
     def train_step(self, transitions, gamma, tdqn):
         """
-
-        :param transitions:
-        :param gamma:
-        :param tdqn:
-        :return:
+        Step in the training process of the deep Q-network
+        :param transitions: Transitions from replay buffer
+        :param gamma: Discount factor
+        :param tdqn: Target Q-network
+        :return: Nothing
         """
         states = np.array([transition[0] for transition in transitions])
         actions = np.array([transition[1] for transition in transitions])
@@ -735,7 +760,8 @@ class DeepQNetwork(torch.nn.Module):
 
 class ReplayBuffer:
     """
-
+    Stores the agent's experience (s,a,r,s+1) or transition
+    at each time step in a buffer.
     """
     def __init__(self, buffer_size, random_state):
         self.buffer = deque(maxlen=buffer_size)
@@ -746,17 +772,18 @@ class ReplayBuffer:
 
     def append(self, transition):
         """
-
-        :param transition:
-        :return:
+        Add new transition to the buffer
+        :param transition: Transition to store
+        :return: Nothing
         """
         self.buffer.append(transition)
 
     def draw(self, batch_size):
         """
-
-        :param batch_size:
-        :return:
+        Return a batch of the stored transitions in the buffer.
+        Transitions in the batch are uniformly drawn from the buffer
+        :param batch_size: Size of the batch.
+        :return: Batch of transitions
         """
         # Get indices of batch_size from self.buffer without replacement
         transitions_index = self.random_state.choice(len(self.buffer), batch_size, replace=False)
@@ -769,7 +796,12 @@ class ReplayBuffer:
 
 class DeepQLearning:
     """
-
+    Deep Q-network learning algorithm. Learns successful policies directly from
+    high-dimensional sensory inputs. Adaptation from:
+    [Mnih et al., 2015] Mnih, V., Kavukcuoglu, K., Silver, D., Rusu, A. A.,
+     Veness, J., Bellemare, M. G., Graves, A., Riedmiller, M., Fidjeland,
+     A. K., Ostrovski, G., et al. (2015). Human-level control through deep
+     reinforcement learning. Nature, 518(7540):529.
     """
     def __init__(self, env, max_episodes=128, learning_rate=0.5, epsilon=0.5,
                  gamma=0.9, seed=0):
@@ -781,27 +813,26 @@ class DeepQLearning:
         self.seed = seed
         self.episode_rewards = []
 
-
     def make_policy(self, batch_size, target_update_frequency, buffer_size,
-                                kernel_size, conv_out_channels, fc_out_features, seed):
+                    kernel_size, conv_out_channels, fc_out_features):
         """
-
+        Trains deep Q-network to learn a policy from the provided image
+        encoded environment
         :param batch_size:
         :param target_update_frequency:
         :param buffer_size:
         :param kernel_size:
         :param conv_out_channels:
         :param fc_out_features:
-        :param seed:
-        :return:
+        :return: Deep Q-network
         """
-        random_state = np.random.RandomState(seed)
+        random_state = np.random.RandomState(self.seed)
         replay_buffer = ReplayBuffer(buffer_size, random_state)
 
         dqn = DeepQNetwork(self.env, self.learning_rate, kernel_size, conv_out_channels,
-                           fc_out_features, seed=seed)
+                           fc_out_features, seed=self.seed)
         tdqn = DeepQNetwork(self.env, self.learning_rate, kernel_size, conv_out_channels,
-                            fc_out_features, seed=seed)
+                            fc_out_features, seed=self.seed)
 
         epsilon = np.linspace(self.epsilon, 0, self.max_episodes)
 
@@ -838,6 +869,5 @@ class DeepQLearning:
                 tdqn.load_state_dict(dqn.state_dict())
 
             self.episode_rewards.append(episode_rewards)
-
 
         self.policy, self.value = self.env.decode_policy(dqn)
