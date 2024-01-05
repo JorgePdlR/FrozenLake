@@ -237,8 +237,6 @@ class FrozenLake(Environment):
 
             print(lake.reshape(self.lake.shape))
         else:
-            # UTF-8 arrows look nicer, but cannot be used in LaTeX
-            # https://www.w3schools.com/charsets/ref_utf_arrows.asp
             actions = ['^', '<', '_', '>']
 
             print('Lake:')

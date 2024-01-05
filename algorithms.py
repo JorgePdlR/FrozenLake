@@ -5,26 +5,15 @@ from collections import deque
 import frozenLake
 import config as conf
 
+def is_policy_optimal(env, policy, gamma, model):
+    """
 
-def discountedReward(episode_rewards,gamma):
-    discounted_sum = 0
-    for t in (range(len(episode_rewards))):
-        pgamma = np.power(gamma, t)
-        discounted_sum += pgamma * episode_rewards[t]
-    return discounted_sum
-
-def moving_average(rewards, n=20):
-    mov_avg = [] #TODO
-    for reward_i in rewards[n:]:
-        pass
-
-    return mov_avg
-
-def param_search(params):
-    pass
-
-
-def is_optimal_policy(env, policy, gamma, model):
+    :param env:
+    :param policy:
+    :param gamma:
+    :param model:
+    :return:
+    """
     model_tab = TabularModelBased(env, gamma, .001, 128)
     policy_val = model_tab.policy_evaluation(policy)
 
@@ -54,6 +43,11 @@ class TabularModelBased:
         self.max_iterations = max_iterations
 
     def policy_evaluation(self, policy):
+        """
+
+        :param policy:
+        :return:
+        """
         value = np.zeros(self.env.n_states, dtype=np.float32)
 
         # Loop the number of iterations or while our error is greater than
@@ -107,6 +101,11 @@ class TabularModelBased:
         return value
 
     def policy_improvement(self, value):
+        """
+
+        :param value:
+        :return:
+        """
         improved_policy = np.zeros(self.env.n_states, dtype=int)
 
         # Go through all the states
@@ -140,6 +139,11 @@ class TabularModelBased:
         return improved_policy
 
     def policy_iteration(self, policy=None):
+        """
+
+        :param policy:
+        :return:
+        """
         if policy is None:
             policy = np.zeros(self.env.n_states, dtype=int)
         else:
@@ -167,6 +171,11 @@ class TabularModelBased:
         self.policy = policy
 
     def value_iteration(self, value=None):
+        """
+
+        :param value:
+        :return:
+        """
         if value is None:
             value = np.zeros(self.env.n_states)
         else:
@@ -217,6 +226,10 @@ class TabularModelBased:
 
 
 class LinearWrapper:
+    """
+    Wrapper class for model-free algorithms using linear approximation function.
+    Helps to one-hot encode states and decode policy from the features.
+    """
     def __init__(self, env:frozenLake.FrozenLake):
         self.env = env
         self.lake_flat = self.env.lake_flat
@@ -224,7 +237,12 @@ class LinearWrapper:
         self.n_states = self.env.n_states
         self.n_features = self.n_actions * self.n_states
 
-    def encode_state(self, s):
+    def encode_state(self, s: int) -> []:
+        """
+        Returns a one-hot action encoded action-state features
+        :param s: Position of the agent in the flattened lake
+        :return:
+        """
         features = np.zeros((self.n_actions, self.n_features))
         for a in range(self.n_actions):
             i = np.ravel_multi_index((s, a), (self.n_states, self.n_actions))
@@ -232,7 +250,12 @@ class LinearWrapper:
 
         return features
 
-    def decode_policy(self, theta):
+    def decode_policy(self, theta) -> ([],[]):
+        """
+        Given a set of action-state features, returns the policy and value
+        :param theta: action-state features
+        :return: tuple of decoded policy[] & value[]
+        """
         policy = np.zeros(self.env.n_states, dtype=int)
         value = np.zeros(self.env.n_states)
 
@@ -246,21 +269,42 @@ class LinearWrapper:
         return policy, value
 
     def reset(self):
+        """
+        Resets the environment and sends the agent to the starting point
+        :return: Returns features (of the initial state) after resetting the environment
+        """
         return self.encode_state(self.env.reset())
 
-    def step(self, action):
+    def step(self, action) -> ([], int, bool):
+        """
+        Given an action to perform in a state, the function returns the next state,
+        reward gained by taking that step and if the stoping criteria is reached
+        based on one of these conditions:
+        - reached max_steps
+        - reached an absorbing state (goal or hole)
+        :param action:
+        :return: tuple of new state features, reward, done (stopping criteria)
+        """
         state, reward, done = self.env.step(action)
 
         return self.encode_state(state), reward, done
 
     def render(self, policy=None, value=None):
+        """
+        Shows a visual representation of the policy and value of states
+        :param policy: Best action to take
+        :param value:
+        :return:
+        """
         self.env.render(policy, value)
-
 
 class SARSA:
     """
-    This class implements the SARSA (state-action-reward-state-action) algorithm based
-    on Temporal Difference Learning.
+    This class implements the SARSA (state-action-reward-state-action) algorithm, an On-Policy Temporal Difference Learning method.
+    The policy is calculated using a 1 step state-action-reward-new_state-new_action algorithm,
+    i.e. take an action in the current state, which lands the agent in a new state and gets a reward for that action.
+    Then uses epsilon-greedy policy to take the next action.
+    Temporal difference is used to calculate the Q value of that state-action pair.
     """
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
                  discount_rate=0.9, seed=0, stop_optimal=False):
@@ -272,20 +316,25 @@ class SARSA:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
-        self.stopOptimal = stop_optimal
-        self.episode_discounted_rewards = [] # TODO
+        self.stop_optimal = stop_optimal
+        self.episode_rewards = []
+        self.optimal_policies = []
         self.optimal_model = []
         self.optimal_provided = False
 
     def make_policy(self):
+        """
+        Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
+        to discover the optimal policy & value (and stores it as class attribute).
+        Temporal difference is used to calculate the Q value of that state-action pair.
+        :return:
+        """
         Q = np.zeros((self.env.n_states,self.env.n_actions))
 
         for i in range(self.N):
             conf.vprint('\nEpisode:',i+1)
             state = self.env.reset()
-
             episode_rewards = []
-
 
             # selecting an action based on epsilon greedy policy
             e = self.random_state.random()
@@ -296,40 +345,37 @@ class SARSA:
                 best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[state][a])]
                 action = self.random_state.choice(best_actions)
             done = False
-
+            # run till max_steps is exhausted or reach an absorbing state
             while not done:
                 conf.vprint('\t\tSteps taken:',self.env.n_steps)
                 new_state, reward, done = self.env.step(action)
-
                 episode_rewards.append(reward)
 
-                # Select a_prime using epsilon greedy approach
+                # Select new_action using epsilon greedy approach
                 e = self.random_state.random()
                 conf.vprint('\t\te:', e, '\tepsilon:', self.epsilon[i])
-
-                # choosing the next action
                 if e < self.epsilon[i]:
                     new_action = self.random_state.choice(self.env.n_actions)
                     conf.vprint('\t\tRandom new action chosen')
                 else:
+                    # if there are multiple best actions then randomly choose from among them
                     qmax = max(Q[new_state])
                     best_actions = [a for a in range(self.env.n_actions) if np.allclose(qmax, Q[new_state][a])]
                     new_action = self.random_state.choice(best_actions)
                     conf.vprint('\t\tBEST new action chosen')
                 conf.vprint('\t\tState:', state, '\tAction:', action, '\tReward:', reward, '\tNew state:', new_state, '\tNew action:', new_action)
-                # temporal difference learning
+                # temporal difference learning for 1-step sarsa
                 temporal_diff = reward + self.gamma*Q[new_state][new_action] - Q[state][action]
                 conf.vprint('\t\tTemporal Difference:',temporal_diff)
                 Q[state][action] += self.alpha[i]*temporal_diff
 
                 state, action = new_state, new_action
                 conf.vprint('\tDone?', done)
+            self.episode_rewards.append(episode_rewards)
 
-            discountsum = discountedReward(episode_rewards, self.gamma)
-            self.episode_discounted_rewards.append(discountsum)
-
-            if self.stopOptimal:
-                if is_optimal_policy(self.env, np.argmax(Q, axis=1), self.gamma, self):
+            if self.stop_optimal:
+                # if the algorithm should stop when it converges
+                if is_policy_optimal(self.env, np.argmax(Q, axis=1), self.gamma, self):
                     print("Total number of iterations for optimal policy", i)
                     break
 
@@ -337,6 +383,12 @@ class SARSA:
         self.value = np.max(Q, axis=1)
 
     def make_linear_approx_policy(self):
+        """
+        Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
+        using a linear approximation function by finding weights for each action-feature pair and then finding the
+        optimal policy & value (and stores it as class attribute).
+        :return:
+        """
         weights = np.zeros(self.env.n_features)
         conf.vprint('weights',weights.shape)
         for i in range(self.N):
@@ -369,7 +421,6 @@ class SARSA:
 
                 episode_rewards.append(reward)
 
-
                 new_features = new_state
                 q_pred_new = new_features.dot(weights)
 
@@ -400,11 +451,10 @@ class SARSA:
                 conf.vprint('\tDone?', done)
                 conf.vprint('state', state.shape)
 
-            discountsum = discountedReward(episode_rewards, self.gamma)
-            self.episode_discounted_rewards.append(discountsum)
-            if self.stopOptimal:
+            self.episode_rewards.append(episode_rewards)
+            if self.stop_optimal:
                 currentPolicy, _ = self.env.decode_policy(weights)
-                if is_optimal_policy(self.env, np.argmax(currentPolicy, axis=1), self.gamma, self):
+                if is_policy_optimal(self.env, np.argmax(currentPolicy, axis=1), self.gamma, self):
                     print("Total number of episodes for optimal policy", i)
                     break
 
@@ -412,6 +462,11 @@ class SARSA:
 
 
 class Qlearning:
+    """
+    This class implements the Q Learning algorithm, an Off-Policy Temporal Difference Learning method.
+    ...
+    Temporal difference is used to calculate the Q value of that state-action pair.
+    """
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
                  discount_rate=0.9, seed=0, stop_optimal=False):
         self.env = env
@@ -422,12 +477,17 @@ class Qlearning:
         self.policy = [0]*self.env.n_states
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
-        self.episode_discounted_rewards = [] # TODO
+        self.episode_rewards = []
         self.optimal_model = []
         self.optimal_provided = False
-        self.stopOptimal = stop_optimal
+        self.stop_optimal = stop_optimal
 
     def make_policy(self):
+        """
+        Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
+        to discover the optimal policy & value (and stores it as class attribute)
+        :return:
+        """
         # Initiate the q values
         q = np.zeros((self.env.n_states, self.env.n_actions))
 
@@ -452,15 +512,13 @@ class Qlearning:
                 # update the q value
                 q[s, a] += self.alpha[i] * (r + self.gamma * np.max(q[s_prime, :]) - q[s, a])
 
-
-
                 # Move to the next state
                 s = s_prime
-            discountsum = discountedReward(episode_rewards,self.gamma)
-            self.episode_discounted_rewards.append(discountsum)
 
-            if self.stopOptimal:
-                if is_optimal_policy(self.env, np.argmax(Q, axis=1), self.gamma, self):
+            self.episode_rewards.append(episode_rewards)
+
+            if self.stop_optimal:
+                if is_policy_optimal(self.env, np.argmax(q, axis=1), self.gamma, self):
                     print("Total number of iterations for optimal policy", i)
                     break
 
@@ -468,8 +526,13 @@ class Qlearning:
         self.value = q.max(axis=1)
         return self.policy, self.value
 
-
     def make_linear_approx_policy(self):
+        """
+        Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
+        using a linear approximation functions
+        to discover the optimal policy & value (and stores it as class attribute)
+        :return:
+        """
         # Initiate theta
         theta = np.zeros(self.env.n_features)
 
@@ -478,7 +541,6 @@ class Qlearning:
 
         # For all the iterations
         for i in range(self.N):
-
             # Initial state and feature
             done = False
             f = self.env.reset()
@@ -486,8 +548,7 @@ class Qlearning:
 
             # Update Q
             q = f.dot(theta)
-
-            # While s is not in an absorbing state
+            # While s is not in an absorbing state and not reached max_steps
             while not done:
 
                 e = self.random_state.random()
@@ -501,7 +562,6 @@ class Qlearning:
 
                 # Take step with action a
                 features_prime, r, done = self.env.step(a)
-
                 episode_rewards.append(r)
                 # update delta
                 delta = r - q[a]
@@ -517,16 +577,17 @@ class Qlearning:
                 # Update the theta value
                 theta += eta[i] * delta * f[a, :]
                 f = features_prime
-            discountsum = discountedReward(episode_rewards, self.gamma)
-            self.episode_discounted_rewards.append(discountsum)
 
+            self.episode_rewards.append(episode_rewards)
 
         self.policy, self.value = self.env.decode_policy(theta)
         return self.policy, self.value
 
 
-# TODO: class QLearning:
 class FrozenLakeImageWrapper:
+    """
+
+    """
     def __init__(self, env):
         self.env = env
 
@@ -550,9 +611,19 @@ class FrozenLakeImageWrapper:
             self.state_image.update({state: np.stack([state_matrix] + lake_image)})
 
     def encode_state(self, state):
+        """
+
+        :param state:
+        :return:
+        """
         return self.state_image[state]
 
     def decode_policy(self, dqn):
+        """
+
+        :param dqn:
+        :return:
+        """
         states = np.array([self.encode_state(s) for s in range(self.env.n_states)])
         q = dqn(states).detach().numpy()  # torch.no_grad omitted to avoid import
 
@@ -562,18 +633,33 @@ class FrozenLakeImageWrapper:
         return policy, value
 
     def reset(self):
+        """"""
+
         return self.encode_state(self.env.reset())
 
     def step(self, action):
+        """
+
+        :param action:
+        :return:
+        """
         state, reward, done = self.env.step(action)
 
         return self.encode_state(state), reward, done
 
     def render(self, policy=None, value=None):
+        """
+
+        :param policy:
+        :param value:
+        :return:
+        """
         self.env.render(policy, value)
 
 
 class DeepQNetwork(torch.nn.Module):
+    """"""
+
     def __init__(self, env, learning_rate, kernel_size, conv_out_channels,
                  fc_out_features, seed):
         torch.nn.Module.__init__(self)
@@ -594,6 +680,11 @@ class DeepQNetwork(torch.nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, x):
+        """
+
+        :param x:
+        :return:
+        """
         x = torch.tensor(x, dtype=torch.float)
 
         # Convolutional layer
@@ -611,6 +702,13 @@ class DeepQNetwork(torch.nn.Module):
         return x
 
     def train_step(self, transitions, gamma, tdqn):
+        """
+
+        :param transitions:
+        :param gamma:
+        :param tdqn:
+        :return:
+        """
         states = np.array([transition[0] for transition in transitions])
         actions = np.array([transition[1] for transition in transitions])
         rewards = np.array([transition[2] for transition in transitions], dtype=np.float32)
@@ -636,6 +734,9 @@ class DeepQNetwork(torch.nn.Module):
 
 
 class ReplayBuffer:
+    """
+
+    """
     def __init__(self, buffer_size, random_state):
         self.buffer = deque(maxlen=buffer_size)
         self.random_state = random_state
@@ -644,9 +745,19 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def append(self, transition):
+        """
+
+        :param transition:
+        :return:
+        """
         self.buffer.append(transition)
 
     def draw(self, batch_size):
+        """
+
+        :param batch_size:
+        :return:
+        """
         # Get indices of batch_size from self.buffer without replacement
         transitions_index = self.random_state.choice(len(self.buffer), batch_size, replace=False)
         # Get transitions that correspond to the previous indices
@@ -657,18 +768,33 @@ class ReplayBuffer:
 
 
 class DeepQLearning:
+    """
+
+    """
     def __init__(self, env, max_episodes=128, learning_rate=0.5, epsilon=0.5,
                  gamma=0.9, seed=0):
-        self.env = env
+        self.env = FrozenLakeImageWrapper(env)
         self.max_episodes = max_episodes
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.gamma = gamma
         self.seed = seed
-        self.episode_discounted_rewards = [] # TODO
+        self.episode_rewards = []
 
-    def deep_q_network_learning(self, batch_size, target_update_frequency, buffer_size,
+
+    def make_policy(self, batch_size, target_update_frequency, buffer_size,
                                 kernel_size, conv_out_channels, fc_out_features, seed):
+        """
+
+        :param batch_size:
+        :param target_update_frequency:
+        :param buffer_size:
+        :param kernel_size:
+        :param conv_out_channels:
+        :param fc_out_features:
+        :param seed:
+        :return:
+        """
         random_state = np.random.RandomState(seed)
         replay_buffer = ReplayBuffer(buffer_size, random_state)
 
@@ -711,8 +837,7 @@ class DeepQLearning:
             if (i % target_update_frequency) == 0:
                 tdqn.load_state_dict(dqn.state_dict())
 
-            discountsum = discountedReward(episode_rewards, self.gamma)
-            self.episode_discounted_rewards.append(discountsum)
+            self.episode_rewards.append(episode_rewards)
 
-        #return dqn,episode_discounted_rewards
-        return dqn
+
+        self.policy, self.value = self.env.decode_policy(dqn)
