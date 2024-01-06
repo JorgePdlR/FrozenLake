@@ -815,18 +815,20 @@ class DeepQLearning:
         self.gamma = gamma
         self.seed = seed
         self.episode_rewards = []
+        self.policy = [0]*env.n_states
+        self.value = [0]*env.n_states
 
     def make_policy(self, batch_size, target_update_frequency, buffer_size,
                     kernel_size, conv_out_channels, fc_out_features) -> None:
         """
         Trains deep Q-network to learn a policy from the provided image
         encoded environment
-        :param batch_size:
-        :param target_update_frequency:
-        :param buffer_size:
-        :param kernel_size:
-        :param conv_out_channels:
-        :param fc_out_features:
+        :param batch_size: Number of transitions in the batch
+        :param target_update_frequency: How often target Q network is updated
+        :param buffer_size: Size of the replay buffer
+        :param kernel_size: Kernel size for CNN
+        :param conv_out_channels: Number of CNN outputs
+        :param fc_out_features: Number of output features
         :return:
         """
         random_state = np.random.RandomState(self.seed)
