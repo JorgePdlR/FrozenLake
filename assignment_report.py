@@ -24,6 +24,7 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
     :param gamma: Discount factor for finding the policy
     :return:
     """
+    # Finding sum of discounted rewards for each episode
     episode_discounted_rewards = []
     for rew in model.episode_rewards:
         discounted_sum = 0
