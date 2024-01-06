@@ -44,6 +44,7 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
     if linear_approx:
         title += ' (Linear Approximation)'
 
+    # Plotting the moving averages
     plt.plot(range(len(averages)), averages, linewidth=1, c='m')
     plt.title(algorithm+' Return')
     plt.xlabel('Episode', fontsize=12)
