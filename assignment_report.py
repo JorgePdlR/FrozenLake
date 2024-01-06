@@ -184,7 +184,7 @@ if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
     algorithm = 'q_learning'
-    linear_approx = True # option only used for sarsa and Q learning
+    linear_approx = False  # option only used for sarsa and Q learning
     verbose = False  # set to True for tracing the algorithm
     stop_at_convergence = False
 
