@@ -1,20 +1,38 @@
 ## Project Structure
 
 ### Main
-This is the entry point of the project for the agent to interact with the 
-environment and find optimal policies.
+The main.py file is the entry point of the project for the agent to interact with the 
+environment and find optimal policies with each algorithm.
 
-### Control Algorithms
-  - Dynamic Programming
-  - SARSA Control
-  - SARSA Control using Linear Approximation function
+### Algorithms
+File algorithms.py implements all reinforcement learning algorithms.
+It is divided in classes based on the algorithms:
+  - Tabular model based
+    - Policy evaluation
+    - Policy improvement
+    - Policy iteration
+    - Value iteration
+  - SARSA
+    - SARSA control (make_policy)
+    - linear SARSA control (make_linear_approx_policy)
   - Q-Learning
-  - Q-Learning using Linear Approximation function
+    - Q-learning control (make_policy)
+    - Linear Q-learning control (make_linear_approx_policy)
   - Deep Q-Learning
+    - DeepQLearning (make_policy)
 
 ### Frozen Lake
-It has the environment (big & small lakes) encoded.
+In the file frozenLake.py the environment (big & small lakes) dynamics are encoded.
 Use play() to test the implementation of the environment.
+
+### Assignment report 
+File assignment_report.py is a secondary main file to run individually each algorithm
+and implements all the necessary code to answer the questions for the report assignment
+
+### Config
+The file config.py is used to configure the verbose print for extra tracing and
+debugging in the project, all files include this file. Any extra general configurations
+for the project can be added here.
 
 ---
 
