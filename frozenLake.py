@@ -109,7 +109,7 @@ class Environment(EnvironmentModel):
         Draws policy and values for each state in the environment
         :param policy: Policy to render
         :param value: Value for each state to render
-        :return: Nothing
+        :return:
         """
         raise NotImplementedError()
 
@@ -305,12 +305,12 @@ class FrozenLake(Environment):
         # In any other case there is no reward
         return reward
 
-    def render(self, policy=None, value=None):
+    def render(self, policy=None, value=None) -> None:
         """
         Draws policy and values for each state in the environment
         :param policy: Policy to render
         :param value: Value for each state to render
-        :return: Nothing
+        :return:
         """
         if policy is None:
             lake = np.array(self.lake_flat)

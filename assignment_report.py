@@ -53,7 +53,7 @@ def plot_rewards(y:[], algorithm:str) -> None:
     plt.show()
 
 
-def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bool):
+def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bool) -> None:
     """
     Finds the best parameter values for an algorithm in a given environment
     :param big_lake: Indicates if big lake or small lake will be used as
@@ -62,7 +62,7 @@ def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bo
     :param algorithm: Name of the algorithm to execute
     :param linear_approx: Indicates if linear approximation should be used
                            with the provided algorithm (if exists)
-    :return: Nothing
+    :return:
     """
     values = [0.1, 0.3, 0.5, 0.7, 0.9]
 

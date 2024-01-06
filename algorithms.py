@@ -45,7 +45,7 @@ class TabularModelBased:
         self.theta = theta
         self.max_iterations = max_iterations
 
-    def policy_evaluation(self, policy):
+    def policy_evaluation(self, policy) -> []:
         """
         Given a policy returns the expected return of starting in any state
         s and following the policy
@@ -104,7 +104,7 @@ class TabularModelBased:
 
         return value
 
-    def policy_improvement(self, value):
+    def policy_improvement(self, value) -> []:
         """
         Implements policy improvement algorithm. Returns a policy that is
         V(s)' >= V(s) for all s in S. If there is no improvement then provided
@@ -145,7 +145,7 @@ class TabularModelBased:
         # Return improved policy
         return improved_policy
 
-    def policy_iteration(self, policy=None):
+    def policy_iteration(self, policy=None) -> None:
         """
         Policy iteration algorithm. Applies a sequence of evaluations and improvements
         to an arbitrary (or provided) initial policy. When the policy cannot improve
@@ -153,7 +153,7 @@ class TabularModelBased:
         Once the optimal policy is found policy and V(s) for that policy are stored in
         the class parameters policy and value
         :param policy: policy to improve (can be omitted)
-        :return: Nothing
+        :return:
         """
         if policy is None:
             policy = np.zeros(self.env.n_states, dtype=int)
@@ -181,14 +181,14 @@ class TabularModelBased:
         self.value = value
         self.policy = policy
 
-    def value_iteration(self, value=None):
+    def value_iteration(self, value=None) -> None:
         """
         Value iteration algorithm. Improves the estimates for the values of each
         state. Arbitrary or provided V for all the stages converges to V*. Once
         V* is found policy and V(s) are stored in the class parameters policy
         and value
         :param value: V(s) for all the states in the environment (can be ommited)
-        :return: Nothing
+        :return:
         """
         if value is None:
             value = np.zeros(self.env.n_states)
@@ -282,7 +282,7 @@ class LinearWrapper:
 
         return policy, value
 
-    def reset(self):
+    def reset(self) -> []:
         """
         Resets the environment and sends the agent to the starting point
         :return: Returns features (of the initial state) after resetting the environment
@@ -337,7 +337,7 @@ class SARSA:
         self.optimal_model = []
         self.optimal_provided = False
 
-    def make_policy(self):
+    def make_policy(self) -> None:
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
         to discover the optimal policy & value (and stores it as class attribute).
@@ -397,7 +397,7 @@ class SARSA:
         self.policy = np.argmax(Q, axis=1)
         self.value = np.max(Q, axis=1)
 
-    def make_linear_approx_policy(self):
+    def make_linear_approx_policy(self) -> None:
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
         using a linear approximation function by finding weights for each action-feature pair and then finding the
@@ -497,7 +497,7 @@ class Qlearning:
         self.optimal_provided = False
         self.stop_optimal = stop_optimal
 
-    def make_policy(self):
+    def make_policy(self) -> None:
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
         to discover the optimal policy & value (and stores it as class attribute)
@@ -542,9 +542,8 @@ class Qlearning:
 
         self.policy = q.argmax(axis=1)
         self.value = q.max(axis=1)
-        return self.policy, self.value
 
-    def make_linear_approx_policy(self):
+    def make_linear_approx_policy(self) -> None:
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
         using a linear approximation functions by finding weights for each action-feature pair
@@ -599,7 +598,6 @@ class Qlearning:
             self.episode_rewards.append(episode_rewards)
 
         self.policy, self.value = self.env.decode_policy(theta)
-        return self.policy, self.value
 
 
 class FrozenLakeImageWrapper:
@@ -676,12 +674,12 @@ class FrozenLakeImageWrapper:
 
         return self.encode_state(state), reward, done
 
-    def render(self, policy=None, value=None):
+    def render(self, policy=None, value=None) -> None:
         """
         Renders policy, value and environment
         :param policy: Policy to render
         :param value: Value for each state
-        :return: Nothing
+        :return:
         """
         self.env.render(policy, value)
 
@@ -731,13 +729,13 @@ class DeepQNetwork(torch.nn.Module):
         x = self.output_layer(x)
         return x
 
-    def train_step(self, transitions, gamma, tdqn):
+    def train_step(self, transitions, gamma, tdqn) -> None:
         """
         Step in the training process of the deep Q-network
         :param transitions: Transitions from replay buffer
         :param gamma: Discount factor
         :param tdqn: Target Q-network
-        :return: Nothing
+        :return:
         """
         states = np.array([transition[0] for transition in transitions])
         actions = np.array([transition[1] for transition in transitions])
@@ -775,11 +773,11 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-    def append(self, transition):
+    def append(self, transition) -> None:
         """
         Add new transition to the buffer
         :param transition: Transition to store
-        :return: Nothing
+        :return:
         """
         self.buffer.append(transition)
 
@@ -819,7 +817,7 @@ class DeepQLearning:
         self.episode_rewards = []
 
     def make_policy(self, batch_size, target_update_frequency, buffer_size,
-                    kernel_size, conv_out_channels, fc_out_features):
+                    kernel_size, conv_out_channels, fc_out_features) -> None:
         """
         Trains deep Q-network to learn a policy from the provided image
         encoded environment
@@ -829,7 +827,7 @@ class DeepQLearning:
         :param kernel_size:
         :param conv_out_channels:
         :param fc_out_features:
-        :return: Deep Q-network
+        :return:
         """
         random_state = np.random.RandomState(self.seed)
         replay_buffer = ReplayBuffer(buffer_size, random_state)
