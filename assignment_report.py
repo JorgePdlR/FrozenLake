@@ -8,52 +8,49 @@ import numpy as np
 import config as conf
 
 
-def sum_discounted_reward(episode_rewards:[], gamma:float) -> float:
+def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
+                 algorithm: str, linear_approx: bool, gamma: float) -> None:
     """
     Given rewards for each step in the episode, the method calculates
     the sum of discounted rewards for that episode
-    :param episode_rewards: Rewards accumulated at each step in the episode
-    :param gamma: discount factor
-    :return:
-    """
-    discounted_sum = 0
-    for t in (range(len(episode_rewards))):
-        pgamma = gamma**t
-        discounted_sum += pgamma * episode_rewards[t]
 
-    return discounted_sum
-
-
-def moving_average(rewards:[], size=20) -> []:
-    """
     Calculates the moving averages of rewards in a given window
-    :param rewards: Rewards per episode
-    :param size: Window size
-    :return: `size` window moving averages
-    """
-    sample_avgs = []
-    for i in range(size, len(rewards)):
-        mean = sum(rewards[i - size:i])/size
-        sample_avgs.append(mean)
 
-    return sample_avgs
-
-
-def plot_rewards(y:[], algorithm:str) -> None:
-    """
     Using matplotlib to plot a line chart to show rewards
-    :param y: Rewards
-    :param algorithm: for the title
+
+    :param model: One of the model free algorithms
+    :param algorithm: Name of the algorithm
+    :param linear_approx: If the model was found using linear approximation of SARSA or Q Learning
+    :param gamma: Discount factor for finding the policy
     :return:
     """
-    plt.plot(range(len(y)), y, linewidth=1, c='m')
+    episode_discounted_rewards = []
+    for rew in model.episode_rewards:
+        discounted_sum = 0
+        for t, reward in enumerate(rew):
+            discount = gamma**t
+            discounted_sum += discount * reward
+        episode_discounted_rewards.append(discounted_sum)
+
+    # Calculating moving averages of the discounted rewards for each episode
+    averages = []
+    size = 20
+    for i in range(size, len(episode_discounted_rewards)):
+        mean = sum(episode_discounted_rewards[i - size:i]) / size
+        averages.append(mean)
+    # plotting moving averages
+    title = algorithm.replace('_', ' ').title()
+    if linear_approx:
+        title += ' (Linear Approximation)'
+
+    plt.plot(range(len(averages)), averages, linewidth=1, c='m')
     plt.title(algorithm+' Return')
     plt.xlabel('Episode', fontsize=12)
     plt.ylabel('Sum of Discounted Rewards', fontsize=12)
     plt.show()
 
 
-def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bool) -> None:
+def parameter_search() -> None:
     """
     Finds the best parameter values for an algorithm in a given environment
     :param big_lake: Indicates if big lake or small lake will be used as
@@ -64,19 +61,27 @@ def parameter_search(big_lake:bool, gamma:float, algorithm:str, linear_approx:bo
                            with the provided algorithm (if exists)
     :return:
     """
-    values = [0.1, 0.3, 0.5, 0.7, 0.9]
+    print('Running parameter search')
+    values = np.arange(0.1, 0.9, 0.1)
+    gamma = 0.9
 
-    # Try all possible combinations of values with itself. It represents
-    # learning rate and exploration factor
-    for i in values:
-        for j in values:
-            print("Using learning rate", i, "exploration factor", j)
-            find_policy(big_lake, gamma, algorithm, linear_approx, i, j)
-
+    # Try all possible combinations of values for learning rate and exploration factor
+    for algorithm in ['sarsa','q_learning']:
+        for lr in values:
+            for e in values:
+                for big_lake in [False, True]:
+                    print('\nUsing Big lake?',big_lake,"\nLearning rate:", lr, "\texploration factor:", e)
+                    model = find_policy(big_lake, gamma, algorithm, linear_approx=False, learning_rate=lr, epsilon=e,
+                                        stop_at_convergence=True)
+                    if model.is_optimal:
+                        print('\t\tFound optimal policy in',len(model.episode_rewards),'episodes.')
+                    else:
+                        print('\t\tDid NOT find optimal policy.')
 
 def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 linear_approx=False, learning_rate=0.5, epsilon=0.5, stop_at_convergence=False):
     """
+
     Find a policy for the indicated environment using the model provided in algorithm
     :param big_lake: to use big_lake environment or not
     :param gamma: discount factor
@@ -87,14 +92,15 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
     :param epsilon: used to calculate epsilon for E-greedy policy methods
     :param stop_at_convergence: stop running the algorithm for more episodes if it converges
                             (it has no impact on tabular model based algorithm)
-    :return:
+
+    :return: Model
     """
-    print('*' * 10, algorithm.replace('_',' ').title(), '*' * 10)
+    print('*' * 20, algorithm.replace('_',' ').title(), '*' * 20)
     begin = dt.now()
     seed = 0
     theta = 0.001
     max_episodes = 4000
-    policy = 0
+    policy = []
 
     if big_lake:
         lake = [['&', '.', '.', '.', '.', '.', '.', '.'],
@@ -127,6 +133,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
 
     elif algorithm == 'sarsa':
         if linear_approx:
+            print('With Linear Approximation')
             env = rl.LinearWrapper(env)
             model = rl.SARSA(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                              max_iterations=max_episodes, seed=seed, stop_optimal=stop_at_convergence)
@@ -139,6 +146,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
 
     elif algorithm == 'q_learning':
         if linear_approx:
+            print('With Linear Approximation')
             env = rl.LinearWrapper(env)
             model = rl.Qlearning(env, learning_rate=0.5, discount_rate=gamma, epsilon=0.5,
                                  max_iterations=max_episodes, seed=seed, stop_optimal=False)
@@ -160,30 +168,19 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
     else:
         print('*'*10,algorithm+' Not Implemeted','*'*10)
         sys.exit(1)
+
     completed = dt.now()
     print('Time taken to find policy:',round((completed-begin).total_seconds(),3),'seconds')
-
     print('Render')
     env.render(model.policy, model.value)
 
-    # Moving averages of sum of discounted rewards for model-free methods
-    if algorithm in ['sarsa', 'q_learning', 'deep_Q_network']:
-        episode_discounted_rewards = []
-        for episode in model.episode_rewards:
-            discounted_rewards = sum_discounted_reward(episode, gamma)
-            episode_discounted_rewards.append(discounted_rewards)
-        averages = moving_average(episode_discounted_rewards)
-        # plotting moving averages
-        title = algorithm.replace('_', ' ').title()
-        if linear_approx:
-            title += ' (Linear Approximation)'
-        plot_rewards(averages, title)
+    return model
 
 
 if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
-    algorithm = 'q_learning'
+    algorithm = 'sarsa'
     linear_approx = False  # option only used for sarsa and Q learning
     verbose = False  # set to True for tracing the algorithm
     stop_at_convergence = False
@@ -209,9 +206,13 @@ if __name__ == '__main__':
     conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",
                 linear_approx, "gamma", gamma)
 
-    find_policy(big_lake, gamma, algorithm, linear_approx, .5, .5, stop_at_convergence)
+    parameter_search()
 
-    # # parameter_search(big_lake, gamma, algorithm, linear_approx)
+    # model = find_policy(big_lake, gamma, algorithm, linear_approx, .5, .5, stop_at_convergence)
+    # if algorithm in ['sarsa', 'q_learning', 'deep_Q_network']:
+    #     plot_returns(model, algorithm, linear_approx, gamma)
+
+
 
 
 

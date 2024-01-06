@@ -28,6 +28,11 @@ def is_policy_optimal(env, policy, gamma, model):
 
     return (model.optimal_model == policy_val).all()
 
+def get_optimal(env, gamma):
+    model = TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
+    model.policy_iteration()
+
+    return model
 
 class TabularModelBased:
     """
@@ -333,9 +338,9 @@ class SARSA:
         self.random_state = np.random.RandomState(seed)
         self.stop_optimal = stop_optimal
         self.episode_rewards = []
-        self.optimal_policies = []
-        self.optimal_model = []
-        self.optimal_provided = False
+        self.is_optimal = False
+        # self.optimal_model = []
+        # self.optimal_provided = False
 
     def make_policy(self) -> None:
         """
@@ -345,6 +350,8 @@ class SARSA:
         :return:
         """
         Q = np.zeros((self.env.n_states,self.env.n_actions))
+        if self.stop_optimal:
+            optimal_policy = get_optimal(self.env, self.gamma)
 
         for i in range(self.N):
             conf.vprint('\nEpisode:',i+1)
@@ -389,9 +396,14 @@ class SARSA:
             self.episode_rewards.append(episode_rewards)
 
             if self.stop_optimal:
-                # if the algorithm should stop when it converges
-                if is_policy_optimal(self.env, np.argmax(Q, axis=1), self.gamma, self):
-                    print("Total number of iterations for optimal policy", i)
+                # # if the algorithm should stop when it converges
+                # if is_policy_optimal(self.env, np.argmax(Q, axis=1), self.gamma, self):
+                #     print("Total number of iterations for optimal policy", i)
+                #     break
+                policy = np.argmax(Q, axis=1)
+                self_policy_val = optimal_policy.policy_evaluation(policy)
+                if (self_policy_val == optimal_policy.value).all():
+                    self.is_optimal = True
                     break
 
         self.policy = np.argmax(Q, axis=1)
