@@ -39,12 +39,11 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
     for i in range(size, len(episode_discounted_rewards)):
         mean = sum(episode_discounted_rewards[i - size:i]) / size
         averages.append(mean)
+
     # plotting moving averages
     title = algorithm.replace('_', ' ').title()
     if linear_approx:
         title += ' (Linear Approximation)'
-
-    # Plotting the moving averages
     plt.plot(range(len(averages)), averages, linewidth=1, c='m')
     plt.title(algorithm+' Return')
     plt.xlabel('Episode', fontsize=12)
