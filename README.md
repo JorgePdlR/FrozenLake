@@ -34,6 +34,10 @@ The file config.py is used to configure the verbose print for extra tracing and
 debugging in the project, all files include this file. Any extra general configurations
 for the project can be added here.
 
+### Output files
+- output.txt corresponds to the outputs of running main.py with the small frozen lake
+- output_big_lake.txt corresponds to the outputs of running main.py with the big frozen lake
+
 ---
 
 ## Create Environment for Project 
