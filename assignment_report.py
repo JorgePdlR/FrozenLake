@@ -166,8 +166,7 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration', linear_a
         model.env.render(model.policy, model.value)
 
     else:
-        print('*'*10,algorithm+' Not Implemeted','*'*10)
-        sys.exit(1)
+        raise Exception('*'*10,algorithm+' Not Implemeted','*'*10)
 
     completed = dt.now()
     print('Time taken to find policy:',round((completed-begin).total_seconds(),3),'seconds')
