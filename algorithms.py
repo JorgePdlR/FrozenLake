@@ -479,7 +479,7 @@ class SARSA:
 class Qlearning:
     """
     This class implements the Q Learning algorithm, an Off-Policy Temporal Difference Learning method.
-    ...
+    The policy is calculated using a 1 step state-action-reward-new_state algorithm.
     Temporal difference is used to calculate the Q value of that state-action pair.
     """
     def __init__(self, env: frozenLake.FrozenLake | LinearWrapper, max_iterations=128, learning_rate=0.5, epsilon=0.5,
@@ -501,6 +501,7 @@ class Qlearning:
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
         to discover the optimal policy & value (and stores it as class attribute)
+        Temporal difference is used to calculate the Q value of that state-action pair.
         :return:
         """
         # Initiate the q values
@@ -513,6 +514,7 @@ class Qlearning:
             episode_rewards = []
             while not done:
 
+                # Choose action based on epsilon-greedy policy
                 e = self.random_state.random()
                 if e < self.epsilon[i]:
                     a = np.random.choice(range(self.env.n_actions))
@@ -521,9 +523,11 @@ class Qlearning:
                     best_actions = [act for act in range(self.env.n_actions) if np.allclose(qmax, q[s][act])]
                     a = self.random_state.choice(best_actions)
 
+                # Take a step
                 s_prime, r, done = self.env.step(a)
                 episode_rewards.append(r)
-                # update the q value
+
+                # Update Q value using temporal difference
                 q[s, a] += self.alpha[i] * (r + self.gamma * np.max(q[s_prime, :]) - q[s, a])
 
                 # Move to the next state
@@ -543,7 +547,7 @@ class Qlearning:
     def make_linear_approx_policy(self):
         """
         Given an environment and algorithm parameters, this method iterates over `max_iterations` number of episodes
-        using a linear approximation functions
+        using a linear approximation functions by finding weights for each action-feature pair
         to discover the optimal policy & value (and stores it as class attribute)
         :return:
         """
@@ -565,6 +569,7 @@ class Qlearning:
             # While s is not in an absorbing state and not reached max_steps
             while not done:
 
+                # Choose action based on epsilon-greedy policy
                 e = self.random_state.random()
                 if e < self.epsilon[i]:
                     a = np.random.choice(range(self.env.n_actions))
