@@ -78,6 +78,7 @@ def parameter_search() -> None:
                         print('\t\tFound optimal policy in',len(model.episode_rewards),'episodes.')
                     else:
                         print('\t\tDid NOT find optimal policy.')
+                    print('*'*50,'\n')
 
 def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
                 linear_approx=False, learning_rate=0.5, epsilon=0.5, stop_at_convergence=False):
@@ -181,8 +182,8 @@ def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
 if __name__ == '__main__':
     big_lake = False
     gamma = 0.9
-    algorithm = 'sarsa'
-    linear_approx = False  # option only used for sarsa and Q learning
+    algorithm = 'q_learning'
+    linear_approx = True  # option only used for sarsa and Q learning
     verbose = False  # set to True for tracing the algorithm
     stop_at_convergence = False
 
@@ -198,10 +199,9 @@ if __name__ == '__main__':
             algorithm = str(i)
         else:
             try:
-                float(i)
                 gamma = float(i)
             except ValueError:
-                None
+                pass
 
     conf.init(verbose)
     conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",

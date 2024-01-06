@@ -6,28 +6,6 @@ import frozenLake
 import config as conf
 
 
-def is_policy_optimal(env, policy, gamma, model):
-    """
-    Given a policy, the environment for the provided policy,
-    the model that computed the policy and the discount factor,
-    determines if the provided policy is optimal.
-    :param env:
-    :param policy: Policy to evaluate and determine if it is optimal
-    :param gamma: Discount factor
-    :param model:
-    :return: True if policy os optimal, otherwise False
-    """
-    model_tab = TabularModelBased(env, gamma, .001, 128)
-    policy_val = model_tab.policy_evaluation(policy)
-
-    # Compute optimal policy if not provided
-    if not model.optimal_provided:
-        model_tab.policy_iteration()
-        model.optimal_model = model_tab.value
-        model.optimal_provided = True
-
-    return (model.optimal_model == policy_val).all()
-
 def get_optimal(env, gamma):
     model = TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
     model.policy_iteration()
@@ -339,6 +317,7 @@ class SARSA:
         self.stop_optimal = stop_optimal
         self.episode_rewards = []
         self.is_optimal = False
+        self.name = 'SARSA'
         # self.optimal_model = []
         # self.optimal_provided = False
 
@@ -396,10 +375,6 @@ class SARSA:
             self.episode_rewards.append(episode_rewards)
 
             if self.stop_optimal:
-                # # if the algorithm should stop when it converges
-                # if is_policy_optimal(self.env, np.argmax(Q, axis=1), self.gamma, self):
-                #     print("Total number of iterations for optimal policy", i)
-                #     break
                 policy = np.argmax(Q, axis=1)
                 self_policy_val = optimal_policy.policy_evaluation(policy)
                 if (self_policy_val == optimal_policy.value).all():
@@ -416,6 +391,7 @@ class SARSA:
         optimal policy & value (and stores it as class attribute).
         :return:
         """
+        self.name += ' with Linear Function Approximation'
         weights = np.zeros(self.env.n_features)
         conf.vprint('weights',weights.shape)
         for i in range(self.N):
@@ -478,13 +454,6 @@ class SARSA:
                 conf.vprint('\tDone?', done)
                 conf.vprint('state', state.shape)
 
-            self.episode_rewards.append(episode_rewards)
-            if self.stop_optimal:
-                currentPolicy, _ = self.env.decode_policy(weights)
-                if is_policy_optimal(self.env, np.argmax(currentPolicy, axis=1), self.gamma, self):
-                    print("Total number of episodes for optimal policy", i)
-                    break
-
         self.policy, self.value = self.env.decode_policy(weights)
 
 
@@ -508,6 +477,7 @@ class Qlearning:
         self.optimal_model = []
         self.optimal_provided = False
         self.stop_optimal = stop_optimal
+        self.name = 'Q Learning'
 
     def make_policy(self) -> None:
         """
@@ -516,6 +486,8 @@ class Qlearning:
         Temporal difference is used to calculate the Q value of that state-action pair.
         :return:
         """
+        if self.stop_optimal:
+            optimal_policy = get_optimal(self.env, self.gamma)
         # Initiate the q values
         q = np.zeros((self.env.n_states, self.env.n_actions))
 
@@ -548,8 +520,10 @@ class Qlearning:
             self.episode_rewards.append(episode_rewards)
 
             if self.stop_optimal:
-                if is_policy_optimal(self.env, np.argmax(q, axis=1), self.gamma, self):
-                    print("Total number of iterations for optimal policy", i)
+                policy = np.argmax(q, axis=1)
+                self_policy_val = optimal_policy.policy_evaluation(policy)
+                if (self_policy_val == optimal_policy.value).all():
+                    self.is_optimal = True
                     break
 
         self.policy = q.argmax(axis=1)
@@ -562,11 +536,11 @@ class Qlearning:
         to discover the optimal policy & value (and stores it as class attribute)
         :return:
         """
+        self.name += ' with Linear Function Approximation'
+        if self.stop_optimal:
+            optimal_policy = get_optimal(self.env, self.gamma)
         # Initiate theta
         theta = np.zeros(self.env.n_features)
-
-        eta = self.alpha * (1.0 - np.linspace(0, 1, self.N))
-        epsilon = self.epsilon * (1.0 - np.linspace(0, 1, self.N))
 
         # For all the iterations
         for i in range(self.N):
@@ -579,7 +553,6 @@ class Qlearning:
             q = f.dot(theta)
             # While s is not in an absorbing state and not reached max_steps
             while not done:
-
                 # Choose action based on epsilon-greedy policy
                 e = self.random_state.random()
                 if e < self.epsilon[i]:
@@ -604,10 +577,16 @@ class Qlearning:
                 delta += self.gamma * q[new_action]
 
                 # Update the theta value
-                theta += eta[i] * delta * f[a, :]
+                theta += self.alpha[i] * delta * f[a, :]
                 f = features_prime
 
             self.episode_rewards.append(episode_rewards)
+            if self.stop_optimal:
+                current_policy, _ = self.env.decode_policy(theta)
+                self_policy_val = optimal_policy.policy_evaluation(current_policy)
+                if (self_policy_val == optimal_policy.value).all():
+                    self.is_optimal = True
+                    break
 
         self.policy, self.value = self.env.decode_policy(theta)
 
