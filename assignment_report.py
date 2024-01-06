@@ -8,8 +8,7 @@ import numpy as np
 import config as conf
 
 
-def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
-                 algorithm: str, linear_approx: bool, gamma: float) -> None:
+def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning, gamma: float) -> None:
     """
     Given rewards for each step in the episode, the method calculates
     the sum of discounted rewards for that episode
@@ -22,6 +21,7 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
     :param algorithm: Name of the algorithm
     :param linear_approx: If the model was found using linear approximation of SARSA or Q Learning
     :param gamma: Discount factor for finding the policy
+
     :return:
     """
     # Finding sum of discounted rewards for each episode
@@ -41,11 +41,9 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
         averages.append(mean)
 
     # plotting moving averages
-    title = algorithm.replace('_', ' ').title()
-    if linear_approx:
-        title += ' (Linear Approximation)'
+    title = model.name +' Return'
     plt.plot(range(len(averages)), averages, linewidth=1, c='m')
-    plt.title(algorithm+' Return')
+    plt.title(title)
     plt.xlabel('Episode', fontsize=12)
     plt.ylabel('Sum of Discounted Rewards', fontsize=12)
     plt.show()
@@ -54,12 +52,14 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning,
 def parameter_search() -> None:
     """
     Finds the best parameter values for an algorithm in a given environment
+
     :param big_lake: Indicates if big lake or small lake will be used as
                      environmental model
     :param gamma: Discount factor
     :param algorithm: Name of the algorithm to execute
     :param linear_approx: Indicates if linear approximation should be used
                            with the provided algorithm (if exists)
+
     :return:
     """
     print('Running parameter search')
@@ -80,11 +80,10 @@ def parameter_search() -> None:
                         print('\t\tDid NOT find optimal policy.')
                     print('*'*50,'\n')
 
-def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration',
-                linear_approx=False, learning_rate=0.5, epsilon=0.5, stop_at_convergence=False):
+def find_policy(big_lake=False, gamma=0.9, algorithm='value_iteration', linear_approx=False, learning_rate=0.5, epsilon=0.5, stop_at_convergence=False):
     """
-
     Find a policy for the indicated environment using the model provided in algorithm
+
     :param big_lake: to use big_lake environment or not
     :param gamma: discount factor
     :param algorithm: model based or model-free algorithms

@@ -318,8 +318,6 @@ class SARSA:
         self.episode_rewards = []
         self.is_optimal = False
         self.name = 'SARSA'
-        # self.optimal_model = []
-        # self.optimal_provided = False
 
     def make_policy(self) -> None:
         """
@@ -474,8 +472,6 @@ class Qlearning:
         self.value = [0]*self.env.n_states
         self.random_state = np.random.RandomState(seed)
         self.episode_rewards = []
-        self.optimal_model = []
-        self.optimal_provided = False
         self.stop_optimal = stop_optimal
         self.name = 'Q Learning'
 
@@ -808,6 +804,7 @@ class DeepQLearning:
         self.episode_rewards = []
         self.policy = [0]*env.n_states
         self.value = [0]*env.n_states
+        self.name = 'Deep Q Learning'
 
     def make_policy(self, batch_size, target_update_frequency, buffer_size,
                     kernel_size, conv_out_channels, fc_out_features) -> None:
