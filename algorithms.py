@@ -7,6 +7,13 @@ import config as conf
 
 
 def get_optimal(env, gamma):
+    """
+    Using policy iteration to find an optimal policy to use as a reference
+
+    :param env:
+    :param gamma:
+    :return:
+    """
     model = TabularModelBased(env, gamma, theta=0.001, max_iterations=128)
     model.policy_iteration()
 

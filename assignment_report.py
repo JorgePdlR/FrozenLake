@@ -49,7 +49,7 @@ def plot_returns(model: rl.SARSA | rl.Qlearning | rl.DeepQLearning, gamma: float
     plt.show()
 
 
-def parameter_search() -> None:
+def parameter_search(gamma=0.9) -> None:
     """
     Finds the best parameter values for an algorithm in a given environment
 
@@ -63,8 +63,7 @@ def parameter_search() -> None:
     :return:
     """
     print('Running parameter search')
-    values = np.arange(0.1, 0.9, 0.1)
-    gamma = 0.9
+    values = np.arange(0.1, 1, 0.1)
 
     # Try all possible combinations of values for learning rate and exploration factor
     for algorithm in ['sarsa','q_learning']:
@@ -187,32 +186,34 @@ if __name__ == '__main__':
     stop_at_convergence = False
 
     algorithms = ['policy_iteration', 'value_iteration', 'sarsa', 'q_learning', 'deep_Q_network']
-    for i in sys.argv:
-        if i == "-v" or i == "-verbose" or i == "v" or i == "verbose":
-            verbose = True
-        elif i == "big_lake" or i == "-big_lake":
-            big_lake = True
-        elif i == "linear_approx" or i == "-linear_approx":
-            linear_approx = True
-        elif i in algorithms:
-            algorithm = str(i)
-        else:
-            try:
-                gamma = float(i)
-            except ValueError:
-                pass
+    try:
+        for i in sys.argv:
+            if i == "-v" or i == "-verbose" or i == "v" or i == "verbose":
+                verbose = True
+            elif i == "big_lake" or i == "-big_lake":
+                big_lake = True
+            elif i == "linear_approx" or i == "-linear_approx":
+                linear_approx = True
+            elif i in algorithms:
+                algorithm = str(i)
+            else:
+                try:
+                    gamma = float(i)
+                except ValueError:
+                    print('Could not parse Gamma value. Using default gamma='+str(gamma))
 
-    conf.init(verbose)
-    conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",
-                linear_approx, "gamma", gamma)
+        conf.init(verbose)
+        conf.vprint("Running with verbose", verbose, "big_lake", big_lake, "algorithm", algorithm, "linear_approx",
+                    linear_approx, "gamma", gamma)
 
-    parameter_search()
+        parameter_search(gamma)
 
-    # model = find_policy(big_lake, gamma, algorithm, linear_approx, .5, .5, stop_at_convergence)
-    # if algorithm in ['sarsa', 'q_learning', 'deep_Q_network']:
-    #     plot_returns(model, algorithm, linear_approx, gamma)
+        # model = find_policy(big_lake, gamma, algorithm, linear_approx, .5, .5, stop_at_convergence)
+        # if algorithm in ['sarsa', 'q_learning', 'deep_Q_network']:
+        #     plot_returns(model, gamma)
 
-
+    except Exception as e:
+        print('Error while finding policy:\n',e)
 
 
 
